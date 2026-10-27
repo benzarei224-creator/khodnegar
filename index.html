@@ -1,6 +1,15 @@
 <!doctype html>
-<!-- Khodnegar (خودنگار) v0.1.6 — personal life app, single-file HTML build
+<!-- Khodnegar (خودنگار) v0.2.0 — personal life app, single-file HTML build
      Changelog:
+     0.2.0  1405/08/06  Feedback round 1 (16 items): mood face opens the «شرح حال» page at once; bank SMS permission flow
+                        (Android 13+ restricted settings guide) and new SMS parser (amount line only, account numbers ignored,
+                        Arabic ي/ك); finance numbers shrink to fit; categories tab (add/edit/delete, new category from the
+                        transaction form); sub-tasks hidden behind «قدم‌ها»; paper-style calendar (Jalali + Gregorian + Hijri,
+                        Fridays shaded, event titles in cells, month occasions, month note); meal-specific food lists with a
+                        tick-box picker; ~300 foods; no duplicate in-app banners on Android; one-tap in-app backups;
+                        sample name «علی»; required registration (name, family name, mobile, email; sent to the site later);
+                        366 daily sentences; new logo.
+     0.1.6  1405/08/05  Illustrated step-by-step guide.
      0.1.5  1405/08/03  Local companion, optional AI bridge, six palettes, parser and persistence fixes.
      0.1.4  1405/08/03  ImageGen notebook artwork, calm page hierarchy, accessible light/dark themes; core data schema unchanged.
      0.1.0  1405/08/02  First complete HTML version: tasks, goals & habits, work, Jalali calendar, finance, food, workout, mood,
@@ -133,7 +142,7 @@ pre.err { direction: ltr; text-align: left; font-size: 12px; white-space: pre-wr
 .kv:last-child { border-bottom: 0; }
 .big { font-size: 24px; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums; }
 .stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: var(--r-sm); background: var(--surface-2); min-width: 0; }
-.stat b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.stat b { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; display: block; direction: ltr; text-align: right; }
 .stat small { color: var(--muted); font-size: 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 4px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; }
@@ -595,11 +604,68 @@ main[data-screen=assistant]{gap:18px}.companion-intro{display:flex;align-items:c
 
 </style>
 <style>.guide-intro h2{font-size:28px;margin:12px 0}.guide-intro progress{width:100%;height:7px;accent-color:var(--accent);margin-top:15px}.guide-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px}.guide-index{display:flex;flex-direction:column;gap:6px}.guide-index button{text-align:right;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);display:flex;align-items:center;gap:8px}.guide-index button.on{background:var(--accent-2);border-color:var(--accent);font-weight:bold}.guide-demo{background:var(--hero-paper);border:1px solid var(--line);border-radius:24px;padding:22px;max-width:560px;margin:auto;text-align:center}.guide-demo>small{color:var(--muted)}.guide-symbol{color:var(--accent);margin:15px}.guide-control{display:flex;align-items:center;gap:14px;background:var(--surface);padding:15px;border:1px solid var(--line);border-radius:14px;text-align:right}.guide-control b{border-radius:50%;background:var(--accent);color:var(--on-accent);width:30px;height:30px;display:grid;place-items:center;flex:none}.guide-arrow{color:var(--accent);font-size:22px}.guide-instructions{padding-inline-start:26px;line-height:2.1}.guide-instructions li{padding:8px}.guide-instructions li::marker{color:var(--accent);font-weight:bold}.guide-buttons{display:flex;gap:9px;flex-wrap:wrap;margin-block:18px}.guide-content{min-width:0}@media(max-width:760px){.guide-layout{grid-template-columns:1fr}.guide-index{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:160px;overflow:auto;padding:3px}.guide-index button{font-size:12px;padding:9px;min-width:0}.guide-demo{padding:16px}.guide-intro h2{font-size:24px}}</style></head>
+<style id="kn-v020">
+/* ---- v0.2.0: paper-style calendar ---- */
+.pcal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 12px 10px 10px; }
+.pc-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 2px 4px 8px; }
+.pc-title { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
+.pc-title b { font-size: 34px; font-weight: 900; letter-spacing: -.5px; }
+.pc-year { font-size: 15px; font-weight: 800; color: var(--muted); margin-bottom: 2px; }
+.pc-meta { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--muted); text-align: center; min-width: 0; }
+.pc-meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-mnum { font-size: 38px; font-weight: 900; line-height: 1; color: var(--fg); }
+.pc-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 0 8px; }
+.pc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1.5px solid var(--fg); border-inline-start: 1px solid var(--line); }
+.pc-wd { display: flex; flex-direction: column; align-items: center; padding: 5px 1px 4px; border-inline-end: 1px solid var(--line); border-bottom: 1.5px solid var(--fg); min-width: 0; }
+.pc-wd b { font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.pc-wd small { font-size: 8.5px; color: var(--muted); direction: ltr; }
+.pc-wd.fri b { color: var(--hol); }
+.pc-d { position: relative; min-width: 0; min-height: 66px; padding: 4px 3px 3px; border: 0; border-inline-end: 1px solid var(--line); border-bottom: 1px solid var(--line); background: none; display: flex; flex-direction: column; align-items: stretch; gap: 2px; text-align: right; font: inherit; color: var(--fg); cursor: pointer; overflow: hidden; }
+.pc-d.fri { background: color-mix(in srgb, var(--fg) 8%, transparent); }
+.pc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 2px; }
+.pc-n { font-size: 19px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.pc-sub { display: flex; flex-direction: column; align-items: center; border-inline-start: 1px solid var(--line); padding-inline-start: 2px; line-height: 1.15; }
+.pc-sub i { font-style: normal; font-size: 8.5px; color: var(--muted); }
+.pc-sub i[dir=ltr], .pc-meta span[dir=ltr], .pc-wd small { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.pc-d.hol .pc-n { color: var(--hol); }
+.pc-d.today { box-shadow: inset 0 0 0 2px var(--c-cal); }
+.pc-d.sel { background: color-mix(in srgb, var(--c-cal) 16%, transparent); box-shadow: inset 0 0 0 2px var(--c-cal); }
+.pc-ev { display: block; font-size: 9px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-inline-start: 2px solid var(--dc, var(--c-cal)); padding-inline-start: 2px; color: var(--fg); }
+.pc-more, .pc-tk { font-size: 8.5px; color: var(--muted); line-height: 1.2; }
+.pc-tk { color: var(--c-tasks); }
+.pc-occ { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.pc-occ b { display: inline-block; min-width: 22px; font-variant-numeric: tabular-nums; }
+.pc-occ .hol, .pc-occ .hol b { color: var(--hol); }
+.pc-note textarea { width: 100%; border: 0; border-radius: 0; background: repeating-linear-gradient(transparent 0 29px, var(--line) 29px 30px); line-height: 30px; padding: 0 2px; resize: vertical; min-height: 122px; box-shadow: none; }
+/* ---- v0.2.0: food picker with ticks ---- */
+.fp-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.fp-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.fp-row:last-child { border-bottom: 0; }
+.fp-row.on { background: color-mix(in srgb, var(--c-food) 10%, transparent); }
+.fp-ck { flex: none; width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--line); background: var(--surface); color: transparent; display: grid; place-items: center; padding: 0; }
+.fp-row.on .fp-ck { background: var(--c-food); border-color: var(--c-food); color: #fff; }
+.fp-main { flex: 1; min-width: 0; border: 0; background: none; text-align: right; padding: 6px 0; font: inherit; color: inherit; display: flex; flex-direction: column; }
+.fp-main b { font-size: 14.5px; } .fp-main small { color: var(--muted); font-size: 12px; }
+.fp-qty { display: flex; align-items: center; gap: 4px; flex: none; }
+.fp-qty button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); font: inherit; font-size: 18px; line-height: 1; color: var(--fg); }
+.fp-qty b { min-width: 24px; text-align: center; }
+@media (min-width: 700px) { .pc-d { min-height: 84px; } .pc-n { font-size: 24px; } .pc-ev { font-size: 10.5px; } .pc-sub i { font-size: 10px; } }
+/* ---- v0.2.0: logo, registration, numbers ---- */
+.brand-mark { background: url(data:image/webp;base64,UklGRnIPAABXRUJQVlA4WAoAAAAQAAAAbwAAbwAAQUxQSGEBAAABgFtt2/Lk+aXDYQ53Oh0kJ0ukTAZB1nB3l14XiLSfPbh+zzlUEBEM27aNZDn3jhB1AbxPngBN46Xl4wYDf5jAxvFyabwJSHJ8mjQBZmZvAiMi3MzOAEn6yeRAcZ/POO+j+BW8d3xmvwh86mOSYnSVDNYzKrwN5Ooo0uTDZEDF0jpGiLO0FSD7cDoWScdIceRixwfN0H9OExgtwfC8/91m6K7SMmosq93vNEm7rl8m9l53pcnb+8rLxN8VZG+mTEMBDMuvmmLAuKCQ4MwA0uek23SUwHE7TZGj8DIqLSDPcBJ0Ek6QYcJ7yuD9BLBAqxPLBTQ/MOgk8KF51D6PUO1oiU4pjqU1eqV4rp2o5aRBrc9sUI6gN3L8+58/IPP73APq7XH19tR6e3g9z0DPo9DzRPQ8GD3PR89j0vO05Dw0Pc9OziOU8yT1PFA5z1XO45XzlOU8bDnPXM2jVz4nIHcOAgBWUDgg6g0AAFA3AJ0BKnAAcAA+YSiPRSQioRY69zBABgSzAFcntqQH73zRbI/uf7NvNRifnnCH/xPVDtyv7T6FPOz9Kv+P9KPqLd5t/ue//6cXxq/N/kB53+W74rna5U7T/rL/F86/tV89/jnqBfkv86/0HoSw/ub9Av53/ZP+j6Ts3Hwprc3m/sAfzv/Aeijoa+q//L7hH82/tH/P4EX9ewhccsojvgZZOMeYkZ37aL0eLtYMjGrB558Lvo17C4Levx2uOQvrfrh75iWpKyyTEA0KMzpKEjGIeUkirOPwzktbkiU6+L8z90WM2W67TciRVu9jU/vYaV2wnnH+TnrVAbsHypfd96wbuNjyfWraPUJqTtgOSYEvJMOJtJgjc6s5ell92KZd4fOE4/6miZG0Pq5LTXYtg4MfA0BxsI5PSmh3p/JH+ZAMPOgsO/cSSFV5X1U+Nl5OVvsctAB5SR/aKaM775OrHbehRQUNJeQy2AXVzlv2/41ymQ9DOjswQhxsPALGCy5wk87ncPxRZ8ZL2pbXg16W1LfFGEoUx/kWxbA99TnQ8hBAfNrhs7PPJl9Y6KgivAPc5tMQOfAlheLkzrsav/IVUZL57AAA/vz/sXBOEt4oVAdv3X6IO8eCBrlGomTcgi1U4F3tJhu+lfwc3crzH1/OqNT/gx8FCC+uRpWA7UdQVLa9G3oe+D1SkdrtvJXTmPr9km5eR+Fal5qP2tlN7chkXK7hlKK9BJeflu1F/DOL4bGohBALY0KxSgAKcpNRNqqVpDvATR1fulJaL2LwZhw328ANOMZmmXML47CAnLEpXH0AsAJGMaVS1C8qQF6pNwhmA/IDEV2Dbps2IGCvrydXbhaahY3eQN62lh0HUuDc2B4RFb90/heET7f2IIJQL3vFNpwfzieFEK341371HHdPdp98e5L03T9k7h85pCaykCXiJa3tveZpV/8BZKm9c01HxobXe9o9+b16u/dtJE+i3LQrEyCdP57SO/92mnotir3yLrz+4wEezLfF3+NvlY/KG+iE4oTQK86WniEE+Bb/R4QIdz3uQmsBjVFSE6eI2nJ/nCdMeuQxUYmIW+NkmVU3dhVOScl4b/TngjUmzihoFuFRoRji3vLOJ1H+ryuM5reNNgk3jvny5GSETZJScDMNd9MDyT08QuAXsfsmUS79RdEMvMTT1LL7pMPhezCNLVv9Ak2l9k8H5jUHEny7Tg37t3Wnfmn57NGc9gXxojOgoAG0dmSvhZB8xzJ219omKOKhGjgFYwYuiE1lwscmelGwYkf0jk7H5x1nnOufom98cLFmFwrFqLr+Jg/lxqun84TGS/BU+0IMSAuy4B19ktrQcmM9vouugVH/6Ajt6q/SH1KyiGVH5EwxK4qlttuwZnIQNycdZZhlKLhlfiYEFPNnqtpHUA0PIv/tbMRbwKUO+O/prQdNHgRFtdSco2/3zpjhjcJxz4llb3M7WxgMZBvQSgHtKD3S+y73zmzQqEEdEkHnHek8VwzC/45BKvmAU5Hly6b5wmmuJDV3y4O7k1JFgBF7j8fBqJ6tcy3tXnNuDrNsnuxoZ5MncssMY75B+AVzYFhuE+SBDePj5yvdxvRTfKAlTRcUifU+Wk+dmI3XZjjPA12/usLA+okD/TDEwDEZPO/9A9pr2L+ovMurV02l9NYcFbXFxKg8d+k4979o/fZiVLlxYhYot57nwMI0fgMrBy9QnqAWgTP3bnf9NCIeTDD//c2Xy2HxokUeq3hMKHp/2xvFUIY2VPdUWuq+bRkJknP9COK5odQb0o15vOJmdhM9CAKyLcvTRBzXNE6PoNDmJJ3qHoGZ2MrAuvpZHukM0fifyXSgN0uZSApMB0XJYi2uzX1aT3OmTJr2PFT4r3vostClt48BT68tn6pssg2GLXaC6ZXYnwxsxeF2Zlu9BruE3pe534EcyJk3HJ7CNtzEeoM+20685iPuZo2wIXH5fzmqenenFAbO5iFDkpdpTEBjL1U0pEAp0G0ApOek9UTCCq6kF1xkMX9KYhrJWZ1g8xH+n9cyTJyrmWeYg9mTDfAZ2BXwxK7enGcjfvoYS8pyDScd102prWRJqtVjnyKUtsmxPAzlV1REpbwdxT4k81tu0WH/rZyqXuaoDYIfCddhEVCvu56D+PsCiOPa42pYOegHKoYYl+JVQY1MFAV01YKBQqWWiAGrFeH3DutcnPa0Saqgb1NZcuAx4znElFxP3iGwk2fC37jjoJlmjG6Fk7njzbHUhT98gGkgeL/V2Fpj5+spnIR4Xv2CDZ6RXQQZiFxkYKMBA4M5p3Zsvv6gLogANAeNKCa/tM0NP/JnMPuGEZGs85QRR3JXMxdwuS4XpNfRoRlGEIEx4TyCLAvDE1nmzxXRmZXoRpQPaz+mdNAP8WOstW+Chk0fUElqHeLAqpBJ5AoCDP4UJupk7142+MEktB0n5GNiQtMhBybFDFtGkEvPvl8LOqEl/TcSldLvlPaufJN6f5Z+yQ963V2f+6fD5LuNgWQIaA7C+oaXkcO51rloIVZFD6ji1jF3Y0qidnStWSoCqA4A+x2KpI9ideLQn28Me5kGWdgLob7Me/ATLsVaknWyqjnKC8llObPihuxDfIp7RREKFD8Sdd9O7nfgrSXj+10/D+dx21YFDL58sDUkrhgE0jI1CB+1SFNIBxS1QUHgqGlaOBkoTp5yhAH9bAfAYhI8e+WIARc6mml24oQfDB6Au6hWtfTGfDBoLu/4Zqs5JuBySya5qToWgfC8NiUHK/Kk9ERL+A0kCphjN3BSymiCkW+Rv5U5OQ6fXRHbpd4kX8H//mgngsvObG32bwho1PhSDTrBblYlH7qkmgwT8Ms31srjO3Zc1tQ57bFPPUog5sFrnP4U1J6MzZm6iAEZfFdtDhFx++YV4esscFMIJmpjnZhhmde6pw1xgA0eCIWt1+Df0AYqwPT1eA/ddZojcvj2rjtpK0VJodNQChpkSG8TkVemzW1YeykYHwXNWHrGcaZ/uixsoEjMog3AbLhzgT7BD3dofm3lgRj6nSIB2ep2GzNsaRhhT3w0dsAJOLQeYT/4k8P8l1ouIRbFGV29pb8oLsa5knXzYsr1TzddC4kVno1sFBOdBY1ysHayp23g9KgjF9/h67rza4Wv0PR+/5yQT9JJUyoDLf+sP2DtxF/C7KQ4iYVadIE2J/N4D24gYB16ko86FHkXcB7Sb9nujcYQTqmejQK2FP94qTK2kPdXX3QRB8ZAwIKv/96k0n9u4CvqQSqlihTsCdPaLa5NHwerc5JVE9dx/12FJG5FOs0pQ9FhsDQPib369D+BJvYm6WAZqyddqVP7+u8eMoXvHEruoxdCert7Ky9o3LRms/NgDDO8Lmx5O0rTeh0KxawaI71vYK0e+ur7hZeVON5qDwOWiw94mFUreIHDH2v9cUvV0mkOI9AlreV8m3hQGi6A65KVdOicJaEaftqOsa0MMO5XowFuZbRL2Ybo3bfhhGKghLOw8xw9rwV8v9zpzLXCpMYmaQlbrgYCc627SggJXNJU+/rXWQ6nXkdCuRGpCMOGFltjSeYj/ltcA+Uliy2dso+ft6+sZ+E3uLI5kA6T3Is5etMfeGeShUKyu8y6dKUCZqGr119lJXzcLtlDyTxfyM3DJUx62UXdGgmYRjraHtKRawte7qSUtfdJ9bRZvHAQmEOy9VQmPFY+hnZbLc/6WBz31Is5rAHzSkn/8GYxnu+AZGnYqXaExcCHvXiqumSi/PR5AhKzMYsFfeuJcZuPkY+cDKhNCdiJ51r8CeM/pCVBE47+sTBzoGpg1Cil5ZODvZ7cYPhibPkHuc/XkoLqI2uUn3czOaJZx5RAvpKa52DcVItAOZU7XhlHmjd2vOUtWFTSGKhLley1PRnwRJjj/pBEKaJMQGwQ0IBU1Fc/ANngbdub+oSz3Dr/8eFS5E0jhWEZzR8/Z3dI8bFqlIVRbIZdALqiV1LNjVAZK61uPvOHAz7tg9CTmveseMmS9TH+P1OuHuH18TSMXE3ye+D+TT2EmC77gyizRFiROcmDp48YWeZD15EXrwPTSwRMNAEss4PcpMkJeTI9MFx5hlr4sma7JFPzXbOmP8v3X1Z47BOuhyYvGVDU1tf2ilwlhiyO5MgxoyG+usS6hzI6PqhYZNyq7+e9fpS9JNv0Hj9xYTGjIUp5UaLFgGh1n73vKBr8m0+07OM+/5YJpJjZJLaA7eD55Ivl7n4+3pT8vchiP2yft5oN0YuA0VrnetyVJtG86EiV0bA4wh58F9ocjr0sr6IW6pFd8QDG7zEvPitVf0FqZaITRz+CRt0YQRgWL8bouOQrUdgbpYhUS6D7jofjOBJ+avHvf/pHELctn/NbSB/P0U5yDU6r8mP3oRrwg+oZr+qOJtSNTL9Ji69zrP2hybgwifTSFUFImGjQy+5Cj7e2TVkglN+8ol++QNPU3BC1abqrAMuoR5cXxl/APQi8+kfHGbbtq/qlshF/hTrfEm5XNS0h7J1zQRG/IpAc3HUBvlUULlDODPj1mjQ4PObY7lGVNcKXFyaiSNkg9IFhNAM38zGuz/+BkOv2Kj4+7qngYyuApB2TLRMdI6KB0BDTia15to7pNS0L2q57QXOLBaNOjB02Lxvzs6tRbFIq1P/Pq7OcWxog/WY6dz6hcslDX+1HtCWBGp5PBQrpXAai6jh3Ndum7XokvTQA/BKLyVYNv7/i2bDrwVZV5Rvs69Qi9opymr0zAoWHmdlLVFUFLOboAAA=) center / cover no-repeat; color: transparent !important; font-size: 0 !important; }
+.reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fld.bad input { border-color: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 25%, transparent); }
+.mcard .big { white-space: nowrap; overflow: hidden; direction: ltr; text-align: right; }
+.sms-perm { display: flex; gap: 10px; align-items: flex-start; }
+.guide-steps { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+</style>
 <body>
 <div id="root"></div>
 <script>
 /* Khodnegar — device bridge (injected by tools/build_web.py before the app script)
  * Changelog:
+ *   0.2.0     1405/08/06  Bank SMS: no automatic permission prompt; permission state, request and «open app settings»
+ *                         (Android 13+ restricted settings); fillSheet(). Backups: one-tap files in Documents/Khodnegar
+ *                         (save / list / read) without the share sheet.
  *   0.1.5-m1  1405/08/04  First version: Android (Capacitor 8) native features + iPhone PWA helpers.
  *
  * Android: fills the app's `Platform` object with native plugins —
@@ -880,37 +946,45 @@ main[data-screen=assistant]{gap:18px}.companion-intro{display:flex;align-items:c
   var SMS = P.SmsInbox;
   var sms = {
     available: !!SMS,
+    /* 'granted' | 'denied' | 'prompt' … */
+    permission: function () { return SMS.checkPermissions().then(function (p) { return p.sms; }).catch(function () { return 'denied'; }); },
+    request: function () { return SMS.requestPermissions({ permissions: ['sms'] }).then(function (r) { return r.sms; }).catch(function () { return 'denied'; }); },
+    openSettings: function () { return SMS.openAppSettings().then(function () { return true; }).catch(function () { return false; }); },
+    /* read only when allowed — never pops up a permission dialog by itself */
     read: function (sinceMs) {
-      return SMS.checkPermissions().then(function (p) {
-        if (p.sms === 'granted') return true;
-        return SMS.requestPermissions().then(function (r) { return r.sms === 'granted'; });
-      }).then(function (ok) {
-        if (!ok) { toast('اجازهٔ خواندن پیامک داده نشد'); return []; }
+      return sms.permission().then(function (st) {
+        if (st !== 'granted') return [];
         return SMS.read({ since: sinceMs || (Date.now() - 7 * 86400000), limit: 200 }).then(function (r) { return (r && r.messages) || []; });
       }).catch(function (e) { log('sms read failed', e); return []; });
     },
+    fillSheet: function () { var ta = document.getElementById('smsText'); if (ta) { delete ta.dataset.knFilled; fillSms(ta); } },
   };
-  var BANK_RX = /(برداشت|واریز|انتقال|خرید|مانده|موجودی|بانک|کارت)/;
-  /* when the "ثبت از پیامک بانک" sheet opens, fill it with new bank SMS since the last import */
-  function watchSmsSheet() {
-    var busy = false;
-    new MutationObserver(function () {
-      var ta = document.getElementById('smsText');
-      if (!ta || ta.dataset.knFilled || busy) return;
-      ta.dataset.knFilled = '1'; busy = true;
-      var since = (S.settings && S.settings.smsLastRead) || (Date.now() - 7 * 86400000);
-      sms.read(since).then(function (list) {
-        busy = false;
+  var BANK_RX = /(برداشت|واریز|انتقال|خرید|مانده|موجودی|موجودي|بانک|كارت|کارت|مبلغ)/;
+  var smsBusy = false;
+  function fillSms(ta) {
+    if (!ta || ta.dataset.knFilled || smsBusy) return;
+    ta.dataset.knFilled = '1'; smsBusy = true;
+    var since = (S.settings && S.settings.smsLastRead) || (Date.now() - 7 * 86400000);
+    sms.permission().then(function (st) {
+      if (st !== 'granted') { smsBusy = false; return; }
+      return sms.read(since).then(function (list) {
+        smsBusy = false;
         var bank = list.filter(function (m) { return BANK_RX.test(m.body || '') && /\d/.test(m.body || ''); });
         if (!bank.length) { ta.placeholder = 'پیامک بانکی تازه‌ای از آخرین بررسی پیدا نشد. می‌توانید متن پیامک را دستی بچسبانید.'; return; }
         ta.value = bank.map(function (m) { return m.body; }).join('\n\n');
         S.settings.smsLastRead = Math.max.apply(null, bank.map(function (m) { return m.date || 0; }).concat([since])) + 1;
         DB.save('settings');
-        var btn = ta.closest('.sheet, [role="dialog"], body').querySelector('[data-parse]');
+        var root = ta.closest('.sheet') || ta.closest('[role="dialog"]') || document.body;
+        var btn = root.querySelector('[data-parse]') || document.querySelector('[data-parse]');
         if (btn) btn.click();
         toast(bank.length + ' پیامک بانکی پیدا شد');
       });
-    }).observe(document.body, { childList: true, subtree: true });
+    }).catch(function () { smsBusy = false; });
+  }
+  /* when the "ثبت از پیامک بانک" sheet opens, fill it with new bank SMS since the last import (only if allowed) */
+  function watchSmsSheet() {
+    new MutationObserver(function () { var ta = document.getElementById('smsText'); if (ta && !ta.dataset.knFilled) fillSms(ta); })
+      .observe(document.body, { childList: true, subtree: true });
   }
 
   /* ------------------------------------------------------------------ Android: fingerprint */
@@ -938,6 +1012,37 @@ main[data-screen=assistant]{gap:18px}.companion-intro{display:flex;align-items:c
     return true;
   }
 
+  /* one-tap backups: Documents/Khodnegar/<name>, no share sheet. Survives uninstalling the app. */
+  var backupFiles = {
+    available: !!P.Filesystem,
+    save: function (name, text) {
+      return P.Filesystem.writeFile({ path: 'Khodnegar/' + name, data: text, directory: 'DOCUMENTS', encoding: 'utf8', recursive: true })
+        .then(function () { return true; })
+        .catch(function (e) {
+          log('documents write failed, using app storage', e);
+          return P.Filesystem.writeFile({ path: 'Khodnegar/' + name, data: text, directory: 'DATA', encoding: 'utf8', recursive: true }).then(function () { return true; }).catch(function () { return false; });
+        });
+    },
+    list: function () {
+      function ls(dir) {
+        return P.Filesystem.readdir({ path: 'Khodnegar', directory: dir }).then(function (r) {
+          return ((r && r.files) || []).map(function (f) { return typeof f === 'string' ? { name: f, dir: dir } : { name: f.name, size: f.size, mtime: f.mtime, dir: dir }; })
+            .filter(function (f) { return /\.json$/i.test(f.name); });
+        }).catch(function () { return []; });
+      }
+      return Promise.all([ls('DOCUMENTS'), ls('DATA')]).then(function (a) {
+        var seen = {}, out = [];
+        a[0].concat(a[1]).forEach(function (f) { if (!seen[f.name]) { seen[f.name] = 1; out.push(f); } });
+        backupFiles._dirs = {}; out.forEach(function (f) { backupFiles._dirs[f.name] = f.dir; });
+        return out;
+      });
+    },
+    read: function (name) {
+      var dir = (backupFiles._dirs && backupFiles._dirs[name]) || 'DOCUMENTS';
+      return P.Filesystem.readFile({ path: 'Khodnegar/' + name, directory: dir, encoding: 'utf8' }).then(function (r) { return r && r.data; }).catch(function () { return null; });
+    },
+  };
+
   /* ------------------------------------------------------------------ attach to the app's Platform */
   window.KhodnegarNative = {
     isNative: isNative,
@@ -945,6 +1050,7 @@ main[data-screen=assistant]{gap:18px}.companion-intro{display:flex;align-items:c
       if (!isNative) { Platform.saveFile = function (name, text, mime) { if (!this.canDownload) return false; return webSaveFile(name, text, mime); }; return; }
       Platform.calendar = calendar;
       Platform.sms = sms;
+      Platform.backupFiles = backupFiles;
       Platform.biometric = biometric;
       Platform.notify = { native: !!LN, schedule: scheduleAll, cancelAll: function () { return LN.getPending().then(function (p) { return LN.cancel({ notifications: (p.notifications || []).map(function (n) { return { id: n.id }; }) }); }); } };
       Platform.canDownload = true;
@@ -1205,6 +1311,7 @@ const Holidays = (() => {
         if (near && Math.abs(J.diff(near.iso, real)) <= 3) { near.replaced = true; anchors.push({ iso: real, shift: J.diff(real, near.iso) }); }
       });
       anchors.sort((a, b) => (a.iso < b.iso ? -1 : 1));
+      Object.defineProperty(map, '__anchors', { value: anchors, enumerable: false });
       found.filter((f) => !f.replaced).forEach((f) => {
         let shift = 0;
         if (anchors.length) { const before = anchors.filter((a) => a.iso <= f.iso); shift = (before.length ? before[before.length - 1] : anchors[0]).shift; }
@@ -1229,7 +1336,32 @@ const Holidays = (() => {
   }
   const isHoliday = (iso) => J.wd(iso) === 6 || get(iso).length > 0;
   const available = () => !!fmtH;
-  return { get, isHoliday, forYear, available, hijri };
+  /* Hijri date as used in Iran: Umm al-Qura shifted by the nearest officially announced lunar date */
+  function hijriIR(iso) {
+    if (!fmtH) return null;
+    const st = (window.S && S.settings) || {};
+    const off = st.holidayOffset || 0;
+    const [jy] = J.toJ(iso);
+    const an = (forYear(jy, off).__anchors || []).length ? forYear(jy, off).__anchors : (forYear(jy - 1, off).__anchors || []);
+    let shift = 0;
+    if (an.length) { const before = an.filter((a) => a.iso <= iso); shift = (before.length ? before[before.length - 1] : an[0]).shift; }
+    return hijri(J.addDays(iso, -shift - off));
+  }
+  const H_MONTHS = ['محرم', 'صفر', 'ربیع‌الاول', 'ربیع‌الثانی', 'جمادی‌الاول', 'جمادی‌الثانی', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذی‌القعده', 'ذی‌الحجه'];
+  /* well-known (non-holiday) occasions of the official Iranian calendar: [month, day, title] */
+  const OCCASIONS = [
+    [1, 25, 'روز بزرگداشت عطار نیشابوری'], [1, 29, 'روز ارتش'],
+    [2, 1, 'روز بزرگداشت سعدی'], [2, 3, 'روز بزرگداشت شیخ بهایی'], [2, 12, 'روز معلم'], [2, 25, 'روز بزرگداشت فردوسی'], [2, 28, 'روز بزرگداشت خیام'],
+    [3, 1, 'روز بزرگداشت ملاصدرا'], [3, 3, 'سالروز آزادسازی خرمشهر'],
+    [5, 8, 'روز بزرگداشت شیخ اشراق'], [5, 14, 'سالروز صدور فرمان مشروطیت'], [5, 17, 'روز خبرنگار'],
+    [6, 1, 'روز بزرگداشت ابوعلی سینا و روز پزشک'], [6, 5, 'روز بزرگداشت رازی و روز داروسازی'], [6, 13, 'روز بزرگداشت ابوریحان بیرونی'], [6, 27, 'روز شعر و ادب فارسی'], [6, 31, 'آغاز هفتهٔ دفاع مقدس'],
+    [7, 7, 'روز آتش‌نشانی و ایمنی'], [7, 8, 'روز بزرگداشت مولوی'], [7, 20, 'روز بزرگداشت حافظ'],
+    [8, 8, 'روز نوجوان'], [8, 13, 'روز دانش‌آموز'], [8, 24, 'روز کتاب و کتابخوانی'],
+    [9, 5, 'روز بسیج'], [9, 16, 'روز دانشجو'], [9, 25, 'روز پژوهش'], [9, 30, 'شب یلدا'],
+    [11, 12, 'سالروز بازگشت امام خمینی'], [12, 5, 'روز بزرگداشت خواجه نصیرالدین طوسی و روز مهندس'], [12, 15, 'روز درختکاری'],
+  ];
+  const occasions = (jm) => OCCASIONS.filter((o) => o[0] === jm);
+  return { get, isHoliday, forYear, available, hijri, hijriIR, H_MONTHS, occasions };
 })();
 
 /* ---- js/core/icons.js ---- */
@@ -1328,7 +1460,8 @@ const Platform = (() => {
     isNative,
     name: isNative ? 'android' : 'web',
     calendar: { available: false, cached: [], read: async () => [], write: async () => false },
-    sms: { available: false, read: async () => [] },
+    sms: { available: false, read: async () => [], permission: async () => 'unavailable', request: async () => 'unavailable', openSettings: async () => false },
+    backupFiles: { available: false, save: async () => false, list: async () => [], read: async () => null },
     biometric: { available: false, verify: async () => false },
     notify: { native: false, schedule: async () => false, cancelAll: async () => false },
     /* save a text file: download link in a normal browser; returns false where downloads are blocked */
@@ -1814,7 +1947,7 @@ const Charts = (() => {
 
 /* ---- js/core/app.js ---- */
 /* Khodnegar — application shell: modules, navigation, actions, rendering */
-const APP_VERSION = '0.1.6';
+const APP_VERSION = '0.2.0';
 const MODULE_ORDER = ['tasks', 'goals', 'work', 'calendar', 'finance', 'food', 'workout', 'mood'];
 const App = (() => {
   const mods = {};
@@ -1863,6 +1996,7 @@ const App = (() => {
     renderTabs();
     renderDesktopNav();
     if (out.mount) try { out.mount(main); } catch (e) { console.error(e); }
+    try { fitNums(main); } catch (e) { /* ignore */ }
     window.scrollTo(0, nav ? 0 : (scrollMemo[key] || 0));
     if (!nav) window.scrollTo(0, scrollMemo[key] || 0);
   }
@@ -1901,6 +2035,13 @@ const App = (() => {
       const f = acts[el.dataset.ch];
       if (f) f(el.dataset, el, ev);
     });
+    /* text areas save while typing (month note, …) */
+    document.addEventListener('input', (ev) => {
+      const el = ev.target.closest('textarea[data-ch]');
+      if (!el) return;
+      const f = acts[el.dataset.ch];
+      if (f) f(el.dataset, el, ev);
+    });
     window.addEventListener('popstate', () => { if (back()) history.pushState(null, ''); });
     try { history.pushState(null, ''); } catch (e) { /* ignore */ }
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') UI.closeTop(); });
@@ -1934,7 +2075,7 @@ const App = (() => {
     Backup.auto();
     if (!S.settings.onboarded) { Onboard.show(); }
     else if (!License.check()) { /* license screen shown by check */ }
-    else Lock.boot();
+    else { Lock.boot(); Account.ensure(); }
     render(true);
     Notify.start();
     window.addEventListener('focus', () => { if (S.settings.onboarded) { Rollover.run(); refresh(); } });
@@ -2184,6 +2325,200 @@ const FOOD_DB = [
   ['whey', 'پودر پروتئین وی', 'مکمل', '۱ اسکوپ', 30, 120, 24, 3, 1.5],
   ['gainer', 'مکمل گینر', 'مکمل', '۱ اسکوپ', 100, 380, 15, 75, 3],
 ];
+/* ---- js/data/foods2.js (v0.2.0) ---- */
+/* Khodnegar — more Iranian foods (APPROXIMATE values, typical home serving) and which meal each food fits.
+ * meals: b = صبحانه, l = ناهار, d = شام, s = میان‌وعده.  row: [...FOOD_DB row, ingredients|null, meals]
+ */
+const FOOD_DB2 = [
+  /* صبحانه */
+  ['nan_panir_gerdoo', 'نان و پنیر و گردو', 'صبحانه و لبنیات', '۱ لقمهٔ بزرگ', 90, 260, 10, 22, 15, null, 'b'],
+  ['nan_panir_sabzi', 'نان و پنیر و سبزی', 'صبحانه و لبنیات', '۱ لقمهٔ بزرگ', 80, 180, 8, 22, 7, null, 'b'],
+  ['nan_panir_gojeh', 'نان و پنیر و گوجه و خیار', 'صبحانه و لبنیات', '۱ لقمهٔ بزرگ', 100, 170, 7, 23, 6, null, 'b'],
+  ['nan_kare_moraba', 'نان و کره و مربا', 'صبحانه و لبنیات', '۱ لقمهٔ بزرگ', 90, 280, 5, 45, 9, null, 'b'],
+  ['nan_kare_asal', 'نان و کره و عسل', 'صبحانه و لبنیات', '۱ لقمهٔ بزرگ', 90, 290, 5, 46, 9, null, 'b'],
+  ['arde_shire', 'ارده و شیره', 'صبحانه و لبنیات', '۲ قاشق غذاخوری', 35, 150, 3, 18, 8, null, 'b'],
+  ['shire', 'شیرهٔ انگور', 'صبحانه و لبنیات', '۱ قاشق غذاخوری', 20, 60, 0, 15, 0, null, 'b'],
+  ['panir_lighvan', 'پنیر لیقوان', 'صبحانه و لبنیات', '۱ قوطی کبریت', 30, 90, 6, 1, 7, null, 'b'],
+  ['panir_cheddar', 'پنیر ورقه‌ای (چدار)', 'صبحانه و لبنیات', '۱ ورق', 20, 75, 4.5, 0.5, 6, null, 'bs'],
+  ['khagine', 'خاگینه', 'صبحانه و لبنیات', '۱ بشقاب کوچک', 150, 300, 10, 20, 20, 'تخم مرغ، آرد، شکر', 'b'],
+  ['omlet_ghaarch', 'املت قارچ و پنیر', 'صبحانه و لبنیات', '۱ بشقاب', 200, 280, 18, 6, 20, 'تخم مرغ، قارچ، پنیر', 'bd'],
+  ['sosis_tokhmemorgh', 'سوسیس و تخم مرغ', 'صبحانه و لبنیات', '۱ بشقاب', 200, 380, 20, 8, 30, 'سوسیس، تخم مرغ', 'bd'],
+  ['egg_asali', 'تخم مرغ عسلی', 'صبحانه و لبنیات', '۱ عدد', 50, 75, 6, 0.6, 5, null, 'b'],
+  ['pancake', 'پنکیک', 'صبحانه و لبنیات', '۲ عدد', 150, 340, 9, 50, 11, 'آرد، شیر، تخم مرغ', 'b'],
+  ['ferni', 'فرنی', 'صبحانه و لبنیات', '۱ کاسه', 200, 220, 6, 38, 5, 'شیر، آرد برنج، شکر', 'bs'],
+  ['kachi', 'کاچی', 'صبحانه و لبنیات', '۱ کاسهٔ کوچک', 150, 330, 4, 45, 15, null, 'bs'],
+  ['muesli', 'مسلی با شیر', 'نان و غلات', '۱ کاسه', 250, 320, 11, 52, 7, null, 'b'],
+  ['nan_sabooos', 'نان سبوس‌دار', 'نان و غلات', '۱ کف دست', 40, 95, 4, 17, 1.5, null, 'bld'],
+  ['nan_jo', 'نان جو', 'نان و غلات', '۱ کف دست', 40, 100, 3.5, 20, 1, null, 'bld'],
+  ['shirmal', 'نان شیرمال', 'نان و غلات', '۱ عدد کوچک', 60, 200, 5, 35, 4, null, 'bs'],
+  ['jigar', 'جگر کبابی', 'گوشت و پروتئین', '۱ سیخ', 70, 120, 17, 3, 4.5, null, 'bld'],
+  ['delghelve', 'دل و قلوه کبابی', 'گوشت و پروتئین', '۱ سیخ', 70, 110, 14, 1, 5, null, 'bld'],
+  ['sirabi', 'سیرابی', 'گوشت و پروتئین', '۱ پرس', 250, 230, 25, 0, 14, null, 'bd'],
+  ['lobia_khorak', 'خوراک لوبیا (لوبیا گرم)', 'گوشت و پروتئین', '۱ کاسه', 250, 230, 12, 38, 3, 'لوبیا چیتی، قارچ، پیاز', 'bld'],
+  /* نوشیدنی */
+  ['shir_kakao', 'شیرکاکائو', 'نوشیدنی', '۱ لیوان', 240, 200, 8, 30, 5, null, 'bs'],
+  ['shir_asal', 'شیر و عسل', 'نوشیدنی', '۱ لیوان', 260, 210, 8, 30, 8, null, 'bs'],
+  ['shir_moz', 'شیر موز', 'نوشیدنی', '۱ لیوان بزرگ', 300, 230, 9, 38, 5, null, 'bs'],
+  ['ab_porteghal', 'آب پرتقال طبیعی', 'نوشیدنی', '۱ لیوان', 240, 110, 1.7, 26, 0.5, null, 'bs'],
+  ['ab_havij', 'آب هویج', 'نوشیدنی', '۱ لیوان', 240, 95, 2, 22, 0.4, null, 'bs'],
+  ['chai_sabz', 'چای سبز', 'نوشیدنی', '۱ فنجان', 200, 2, 0, 0.5, 0, null, 'bs'],
+  ['damnoosh', 'دمنوش گیاهی', 'نوشیدنی', '۱ فنجان', 200, 2, 0, 0.5, 0, null, 'bds'],
+  ['neskafe', 'نسکافهٔ سه‌در‌یک', 'نوشیدنی', '۱ ساشه', 18, 80, 1, 13, 2.8, null, 'bs'],
+  ['latte', 'لاته', 'نوشیدنی', '۱ لیوان', 240, 150, 8, 13, 7, null, 'bs'],
+  ['hotchoc', 'هات‌چاکلت', 'نوشیدنی', '۱ لیوان', 240, 190, 8, 27, 6, null, 's'],
+  ['dooghe_mahali', 'دوغ محلی', 'نوشیدنی', '۱ لیوان', 240, 70, 4, 5, 3.5, null, 'ld'],
+  ['delester', 'نوشابهٔ رژیمی', 'نوشیدنی', '۱ قوطی', 330, 1, 0, 0, 0, null, 'lds'],
+  /* غذای اصلی (ناهار و شام) */
+  ['chelo_joojeh', 'چلوجوجه‌کباب', 'غذای اصلی', '۱ پرس', 450, 750, 48, 75, 25, 'سینه مرغ، برنج، زعفران، کره', 'ld'],
+  ['chelo_barg', 'چلوکباب برگ', 'غذای اصلی', '۱ پرس', 450, 820, 45, 72, 36, 'گوشت فیله، برنج، کره', 'ld'],
+  ['chelo_soltani', 'چلوکباب سلطانی', 'غذای اصلی', '۱ پرس', 550, 1150, 62, 75, 62, 'گوشت فیله، گوشت چرخ‌کرده، برنج', 'ld'],
+  ['chelo_mahiche', 'چلوماهیچه', 'غذای اصلی', '۱ پرس', 500, 850, 50, 75, 35, 'ماهیچه، برنج، پیاز', 'ld'],
+  ['chelo_morgh', 'چلومرغ', 'غذای اصلی', '۱ پرس', 450, 720, 45, 75, 24, 'مرغ، برنج، زعفران، پیاز', 'ld'],
+  ['chelo_mahi', 'چلوماهی', 'غذای اصلی', '۱ پرس', 420, 650, 35, 72, 22, 'ماهی، برنج', 'ld'],
+  ['gheyme_nesar', 'قیمه‌نثار', 'غذای اصلی', '۱ پرس', 400, 700, 25, 90, 25, 'گوشت، برنج، خلال بادام، زرشک', 'ld'],
+  ['reshtepolo', 'رشته‌پلو', 'غذای اصلی', '۱ بشقاب', 300, 500, 13, 82, 13, 'رشتهٔ پلویی، برنج، کشمش، خرما', 'ld'],
+  ['kalampolo', 'کلم‌پلو شیرازی', 'غذای اصلی', '۱ بشقاب', 300, 520, 18, 70, 18, 'کلم، گوشت قلقلی، سبزی، برنج', 'ld'],
+  ['shevidpolo', 'شویدپلو با مرغ', 'غذای اصلی', '۱ پرس', 450, 650, 38, 75, 20, 'مرغ، شوید، برنج', 'ld'],
+  ['albaloopolo', 'آلبالوپلو', 'غذای اصلی', '۱ بشقاب', 300, 520, 14, 85, 14, 'آلبالو، گوشت قلقلی، برنج', 'ld'],
+  ['shirinpolo', 'شیرین‌پلو', 'غذای اصلی', '۱ بشقاب', 300, 560, 12, 90, 17, 'پوست پرتقال، خلال بادام، برنج، مرغ', 'ld'],
+  ['damigojeh', 'دمی‌گوجه', 'غذای اصلی', '۱ بشقاب', 300, 400, 8, 75, 8, 'گوجه، برنج، سیب‌زمینی', 'ld'],
+  ['tahdig', 'ته‌دیگ', 'نان و غلات', '۱ تکه', 60, 230, 3, 30, 11, null, 'ld'],
+  ['kabab_tabei', 'کباب تابه‌ای', 'غذای اصلی', '۱ پرس', 200, 480, 32, 6, 36, 'گوشت چرخ‌کرده، پیاز، گوجه', 'ld'],
+  ['bakhtiari', 'کباب بختیاری', 'غذای اصلی', '۱ سیخ', 160, 330, 36, 1, 20, 'گوشت، سینه مرغ', 'ld'],
+  ['shishlik', 'شیشلیک', 'غذای اصلی', '۱ پرس', 300, 750, 60, 0, 56, 'دندهٔ گوسفند', 'ld'],
+  ['mahi_sorkh', 'ماهی سرخ‌کرده', 'غذای اصلی', '۱ تکه', 150, 300, 30, 8, 16, 'ماهی، آرد', 'ld'],
+  ['khorak_morgh', 'خوراک مرغ', 'غذای اصلی', '۱ پرس', 300, 420, 40, 15, 22, 'مرغ، سیب‌زمینی، پیاز', 'ld'],
+  ['zaban', 'خوراک زبان', 'غذای اصلی', '۱ پرس', 150, 330, 22, 3, 26, 'زبان، پیاز، قارچ', 'ld'],
+  ['steak', 'استیک گوشت', 'غذای اصلی', '۱ تکه', 200, 500, 50, 0, 32, 'گوشت فیله', 'ld'],
+  ['shenitsel', 'شنیسل مرغ', 'غذای اصلی', '۱ عدد', 150, 380, 28, 20, 21, 'سینه مرغ، آرد سوخاری، تخم مرغ', 'ld'],
+  ['lazanya', 'لازانیا', 'غذای اصلی', '۱ برش', 250, 420, 22, 38, 20, 'لازانیا، گوشت چرخ‌کرده، پنیر، رب گوجه', 'ld'],
+  ['alfredo', 'پاستا آلفردو', 'غذای اصلی', '۱ بشقاب', 300, 650, 25, 70, 30, 'پاستا، مرغ، قارچ، خامه', 'ld'],
+  ['dolme_barg', 'دلمه برگ مو', 'غذای اصلی', '۵ عدد', 150, 250, 8, 25, 13, 'برگ مو، برنج، گوشت چرخ‌کرده', 'ld'],
+  ['koofte_tabrizi', 'کوفته تبریزی', 'غذای اصلی', '۱ عدد', 250, 450, 25, 35, 23, 'گوشت چرخ‌کرده، لپه، برنج، سبزی', 'ld'],
+  ['koofte_rize', 'کوفته‌ریزه', 'غذای اصلی', '۱ پرس', 200, 400, 22, 20, 26, 'گوشت چرخ‌کرده، رب گوجه', 'ld'],
+  ['shami', 'شامی کباب', 'غذای اصلی', '۱ عدد', 70, 170, 9, 10, 10, 'گوشت چرخ‌کرده، لپه، تخم مرغ', 'ld'],
+  ['kaljoosh', 'کال‌جوش', 'غذای اصلی', '۱ کاسه', 250, 350, 15, 30, 19, 'کشک، گردو، پیاز داغ، نان', 'ld'],
+  ['yatimche', 'یتیمچه', 'غذای اصلی', '۱ بشقاب', 200, 180, 4, 14, 13, 'بادمجان، گوجه، پیاز', 'ld'],
+  ['halim_bademjan', 'حلیم بادمجان', 'غذای اصلی', '۱ کاسه', 250, 330, 14, 30, 17, 'بادمجان، گوشت، عدس، کشک', 'ld'],
+  ['kookoo_morgh', 'کوکو مرغ', 'غذای اصلی', '۱ برش', 120, 230, 15, 8, 15, 'مرغ، سیب‌زمینی، تخم مرغ', 'ld'],
+  ['kookoo_loobia', 'کوکو لوبیا سبز', 'غذای اصلی', '۱ برش', 100, 170, 7, 8, 12, 'لوبیا سبز، تخم مرغ، هویج', 'ld'],
+  ['makaroni_ghalebi', 'ماکارونی با مرغ', 'غذای اصلی', '۱ بشقاب', 300, 500, 28, 65, 13, 'ماکارونی، مرغ، رب گوجه', 'ld'],
+  ['pizza_khanegi', 'پیتزای خانگی', 'غذای اصلی', '۱ برش', 120, 300, 13, 32, 13, null, 'ld'],
+  /* خورش */
+  ['gheyme_bademjan', 'قیمه بادمجان', 'خورش', '۱ کاسه', 250, 360, 17, 22, 22, 'گوشت، لپه، بادمجان، رب گوجه', 'ld'],
+  ['aloo_esfenaj', 'خورش آلو اسفناج', 'خورش', '۱ کاسه', 250, 260, 15, 20, 13, 'گوشت، اسفناج، آلو بخارا', 'ld'],
+  ['bamiye', 'خورش بامیه', 'خورش', '۱ کاسه', 250, 280, 16, 16, 17, 'گوشت، بامیه، رب گوجه', 'ld'],
+  ['loobia_sabz', 'خورش لوبیا سبز', 'خورش', '۱ کاسه', 250, 270, 16, 15, 16, 'گوشت، لوبیا سبز، رب گوجه', 'ld'],
+  ['kadoo', 'خورش کدو', 'خورش', '۱ کاسه', 250, 250, 15, 14, 15, 'گوشت، کدو، رب گوجه', 'ld'],
+  ['beh', 'خورش به', 'خورش', '۱ کاسه', 250, 330, 16, 30, 16, 'گوشت، به، لپه', 'ld'],
+  ['khoresh_mast', 'خورش ماست', 'خورش', '۱ کاسه', 200, 380, 10, 55, 12, 'ماست، گوشت گردن، زعفران، شکر', 'ld'],
+  ['morgh_gharch', 'خورش مرغ و قارچ', 'خورش', '۱ کاسه', 250, 300, 25, 10, 18, 'مرغ، قارچ، پیاز', 'ld'],
+  ['ghalie_mahi', 'قلیه ماهی', 'خورش', '۱ کاسه', 250, 280, 25, 12, 15, 'ماهی، سبزی قلیه، تمر هندی', 'ld'],
+  ['ghalie_meygoo', 'قلیه میگو', 'خورش', '۱ کاسه', 250, 260, 22, 12, 13, 'میگو، سبزی قلیه، تمر هندی', 'ld'],
+  ['rivas', 'خورش ریواس', 'خورش', '۱ کاسه', 250, 240, 15, 10, 15, 'گوشت، ریواس، سبزی', 'ld'],
+  /* آش و سوپ */
+  ['ash_jo', 'آش جو', 'آش و سوپ', '۱ کاسه', 300, 260, 10, 40, 7, 'جو، حبوبات، سبزی آش، کشک', 'ld'],
+  ['ash_shole', 'آش شله‌قلمکار', 'آش و سوپ', '۱ کاسه', 300, 330, 18, 40, 11, 'گوشت، حبوبات، برنج، سبزی', 'ld'],
+  ['ash_doogh', 'آش دوغ', 'آش و سوپ', '۱ کاسه', 300, 220, 10, 25, 9, 'دوغ، سبزی، برنج، نخود', 'ld'],
+  ['ash_anar', 'آش انار', 'آش و سوپ', '۱ کاسه', 300, 240, 8, 42, 5, 'رب انار، سبزی، برنج', 'ld'],
+  ['ashkane', 'اشکنه', 'آش و سوپ', '۱ کاسه', 250, 220, 8, 20, 12, 'پیاز، تخم مرغ، سیب‌زمینی', 'bld'],
+  ['soup_morgh', 'سوپ مرغ', 'آش و سوپ', '۱ کاسه', 300, 180, 15, 15, 6, 'مرغ، هویج، سیب‌زمینی', 'ld'],
+  ['soup_ghaarch', 'سوپ قارچ', 'آش و سوپ', '۱ کاسه', 250, 180, 4, 14, 12, 'قارچ، شیر، آرد', 'ld'],
+  ['soup_vermishel', 'سوپ ورمیشل', 'آش و سوپ', '۱ کاسه', 300, 190, 10, 25, 5, 'ورمیشل، مرغ، هویج', 'ld'],
+  /* سالاد و پیش‌غذا */
+  ['mast_khiar', 'ماست و خیار', 'سبزی و سالاد', '۱ کاسهٔ کوچک', 150, 80, 5, 7, 3, null, 'ld'],
+  ['mast_moosir', 'ماست موسیر', 'سبزی و سالاد', '۱ کاسهٔ کوچک', 100, 90, 4, 5, 6, null, 'ld'],
+  ['borani_esfenaj', 'بورانی اسفناج', 'سبزی و سالاد', '۱ کاسهٔ کوچک', 150, 130, 6, 8, 8, null, 'ld'],
+  ['borani_bademjan', 'بورانی بادمجان', 'سبزی و سالاد', '۱ کاسهٔ کوچک', 150, 160, 4, 10, 12, null, 'ld'],
+  ['zeytoon_parvarde', 'زیتون پرورده', 'سبزی و سالاد', '۱ پیش‌دستی', 50, 140, 2, 4, 13, null, 'ld'],
+  ['salad_kahoo', 'سالاد کاهو', 'سبزی و سالاد', '۱ کاسه', 150, 30, 1.5, 5, 0.3, null, 'ld'],
+  ['salad_sezar', 'سالاد سزار', 'سبزی و سالاد', '۱ کاسه', 250, 400, 22, 15, 28, null, 'ld'],
+  ['salad_makaroni', 'سالاد ماکارونی', 'سبزی و سالاد', '۱ کاسه', 200, 330, 9, 40, 15, null, 'lds'],
+  ['salad_kalam', 'سالاد کلم', 'سبزی و سالاد', '۱ کاسه', 150, 120, 1.5, 10, 8, null, 'ld'],
+  ['torshi', 'ترشی مخلوط', 'سبزی و سالاد', '۱ پیش‌دستی', 50, 15, 0.5, 3, 0, null, 'ld'],
+  ['havij', 'هویج', 'سبزی و سالاد', '۱ عدد', 60, 25, 0.6, 6, 0.1, null, 'lds'],
+  ['ghaarch', 'قارچ تفت‌داده', 'سبزی و سالاد', '۱۰۰ گرم', 100, 110, 3, 5, 9, null, 'bld'],
+  ['kahoo_sekanjebin', 'کاهو سکنجبین', 'سبزی و سالاد', '۱ کاسه', 200, 140, 1.5, 34, 0.3, null, 's'],
+  ['sib_tanoori', 'سیب‌زمینی تنوری', 'سبزی و سالاد', '۱ عدد', 170, 160, 4, 37, 0.2, null, 'ld'],
+  /* پروتئین و غلات ساده */
+  ['morgh_abpaz', 'سینه مرغ آب‌پز', 'گوشت و پروتئین', '۱۰۰ گرم', 100, 150, 30, 0, 3, null, 'ld'],
+  ['goosfand', 'گوشت گوسفندی پخته', 'گوشت و پروتئین', '۱۰۰ گرم', 100, 260, 25, 0, 17, null, 'ld'],
+  ['salmon', 'ماهی سالمون', 'گوشت و پروتئین', '۱۰۰ گرم', 100, 210, 22, 0, 13, null, 'ld'],
+  ['mahi_jonoob', 'ماهی جنوب (شیر/حلوا)', 'گوشت و پروتئین', '۱۰۰ گرم', 100, 140, 23, 0, 5, null, 'ld'],
+  ['booghalamoon', 'بوقلمون', 'گوشت و پروتئین', '۱۰۰ گرم', 100, 150, 29, 0, 3, null, 'ld'],
+  ['loobia_chiti', 'لوبیا چیتی پخته', 'گوشت و پروتئین', '۱ پیمانه', 170, 245, 15, 45, 1, null, 'ld'],
+  ['mash', 'ماش پخته', 'گوشت و پروتئین', '۱ پیمانه', 200, 210, 14, 38, 0.8, null, 'ld'],
+  ['soya', 'سویای پخته', 'گوشت و پروتئین', '۱۰۰ گرم', 100, 170, 16, 10, 9, null, 'ld'],
+  ['naget', 'ناگت مرغ', 'گوشت و پروتئین', '۶ عدد', 100, 280, 15, 16, 17, null, 'lds'],
+  ['bolghoor', 'بلغور پخته', 'نان و غلات', '۱ پیمانه', 180, 150, 5.6, 34, 0.4, null, 'ld'],
+  ['quinoa', 'کینوا پخته', 'نان و غلات', '۱ پیمانه', 185, 220, 8, 39, 3.5, null, 'ld'],
+  ['pasta_sade', 'ماکارونی ساده پخته', 'نان و غلات', '۱ پیمانه', 140, 220, 8, 43, 1.3, null, 'ld'],
+  ['balal', 'بلال (ذرت پخته)', 'نان و غلات', '۱ عدد', 150, 140, 5, 30, 2, null, 's'],
+  ['zorrat_mexici', 'ذرت مکزیکی', 'تنقلات و شیرینی', '۱ لیوان', 200, 220, 6, 40, 6, null, 's'],
+  /* فست‌فود */
+  ['sand_kalbas', 'ساندویچ کالباس', 'فست‌فود', '۱ عدد', 250, 520, 18, 50, 27, null, 'lds'],
+  ['sand_morgh', 'ساندویچ مرغ', 'فست‌فود', '۱ عدد', 250, 480, 30, 45, 18, null, 'ld'],
+  ['sand_kotlet', 'ساندویچ کتلت', 'فست‌فود', '۱ عدد', 250, 520, 18, 55, 25, null, 'ld'],
+  ['sand_bandari', 'ساندویچ بندری', 'فست‌فود', '۱ عدد', 250, 560, 20, 50, 30, null, 'ld'],
+  ['hotdog', 'هات‌داگ', 'فست‌فود', '۱ عدد', 200, 450, 15, 42, 25, null, 'ld'],
+  ['cheeseburger', 'چیزبرگر', 'فست‌فود', '۱ عدد', 270, 620, 32, 45, 33, null, 'ld'],
+  ['pizza_pepperoni', 'پیتزا پپرونی', 'فست‌فود', '۱ برش', 100, 290, 12, 30, 13, null, 'ld'],
+  ['sambooseh', 'سمبوسه', 'فست‌فود', '۱ عدد', 60, 150, 3, 16, 8, null, 's'],
+  ['pirashki_goosht', 'پیراشکی گوشت', 'فست‌فود', '۱ عدد', 100, 280, 10, 30, 13, null, 's'],
+  ['falafel_tak', 'فلافل', 'فست‌فود', '۵ عدد', 85, 280, 11, 27, 15, null, 'lds'],
+  /* میوه */
+  ['talebi', 'طالبی', 'میوه', '۱ برش', 200, 70, 1.7, 16, 0.4, null, 'bs'],
+  ['zardaloo', 'زردآلو', 'میوه', '۳ عدد', 105, 50, 1.5, 12, 0.4, null, 'bs'],
+  ['aloo_taze', 'آلو', 'میوه', '۲ عدد', 130, 60, 0.9, 15, 0.4, null, 's'],
+  ['golabi', 'گلابی', 'میوه', '۱ عدد', 180, 100, 0.6, 27, 0.2, null, 's'],
+  ['beh_mive', 'به', 'میوه', '۱ عدد', 200, 110, 0.8, 30, 0.2, null, 's'],
+  ['limoo_shirin', 'لیموشیرین', 'میوه', '۱ عدد', 150, 45, 1, 11, 0.3, null, 's'],
+  ['grapefruit', 'گریپ‌فروت', 'میوه', '۱/۲ عدد', 120, 50, 1, 13, 0.2, null, 'bs'],
+  ['ananas', 'آناناس', 'میوه', '۱ پیمانه', 165, 82, 0.9, 22, 0.2, null, 's'],
+  ['anbe', 'انبه', 'میوه', '۱ عدد', 200, 120, 1.6, 30, 0.8, null, 's'],
+  ['albaloo', 'آلبالو', 'میوه', '۱ پیمانه', 155, 78, 1.6, 19, 0.5, null, 's'],
+  ['toot_sefid', 'توت سفید', 'میوه', '۱ پیمانه', 140, 60, 2, 14, 0.5, null, 's'],
+  ['anjir_khoshk', 'انجیر خشک', 'میوه', '۳ عدد', 25, 62, 0.8, 16, 0.2, null, 'bs'],
+  ['barge_zardaloo', 'برگهٔ زردآلو', 'میوه', '۵ عدد', 35, 85, 1.2, 22, 0.2, null, 's'],
+  ['aloo_khoshk', 'آلو خشک', 'میوه', '۴ عدد', 40, 95, 0.9, 25, 0.2, null, 's'],
+  ['lavashak', 'لواشک', 'تنقلات و شیرینی', '۱ ورق', 30, 90, 0.5, 22, 0.2, null, 's'],
+  /* تنقلات و شیرینی */
+  ['badam_hendi', 'بادام هندی', 'تنقلات و شیرینی', '۱ مشت', 30, 165, 5, 9, 13, null, 's'],
+  ['fandogh', 'فندق', 'تنقلات و شیرینی', '۱ مشت', 30, 180, 4, 5, 17, null, 's'],
+  ['badam_zamini', 'بادام‌زمینی', 'تنقلات و شیرینی', '۱ مشت', 30, 170, 7, 5, 14, null, 's'],
+  ['tokhme_kadoo', 'تخمهٔ کدو', 'تنقلات و شیرینی', '۱ مشت', 30, 160, 8, 4, 13, null, 's'],
+  ['ajil', 'آجیل مخلوط', 'تنقلات و شیرینی', '۱ مشت', 30, 175, 5, 7, 15, null, 's'],
+  ['popcorn', 'پاپ‌کورن', 'تنقلات و شیرینی', '۱ کاسه', 30, 150, 3, 18, 8, null, 's'],
+  ['kraker', 'کراکر', 'تنقلات و شیرینی', '۶ عدد', 30, 130, 2, 20, 4.5, null, 's'],
+  ['wafer', 'ویفر', 'تنقلات و شیرینی', '۱ عدد', 30, 160, 2, 19, 8.5, null, 's'],
+  ['shokolat_shiri', 'شکلات شیری', 'تنقلات و شیرینی', '۱ تکه', 20, 110, 1.5, 12, 6, null, 's'],
+  ['cake_shokolati', 'کیک شکلاتی', 'تنقلات و شیرینی', '۱ برش', 80, 300, 4, 40, 15, null, 's'],
+  ['cake_khanegi', 'کیک خانگی', 'تنقلات و شیرینی', '۱ برش', 60, 220, 3, 30, 10, null, 'bs'],
+  ['koloche', 'کلوچه فومنی', 'تنقلات و شیرینی', '۱ عدد', 50, 200, 3, 30, 8, null, 'bs'],
+  ['nan_berenji', 'نان برنجی', 'تنقلات و شیرینی', '۲ عدد', 30, 140, 2, 18, 7, null, 's'],
+  ['nan_nokhodchi', 'نان نخودچی', 'تنقلات و شیرینی', '۳ عدد', 30, 150, 3, 17, 8, null, 's'],
+  ['sohan', 'سوهان', 'تنقلات و شیرینی', '۱ تکه', 20, 100, 1.5, 12, 5, null, 's'],
+  ['baghlava', 'باقلوا', 'تنقلات و شیرینی', '۱ تکه', 40, 175, 2.5, 20, 10, null, 's'],
+  ['pashmak', 'پشمک', 'تنقلات و شیرینی', '۱ بستهٔ کوچک', 20, 100, 0.5, 17, 3.5, null, 's'],
+  ['halva', 'حلوا', 'تنقلات و شیرینی', '۲ قاشق', 40, 170, 2, 25, 7, null, 's'],
+  ['jelly', 'ژله', 'تنقلات و شیرینی', '۱ کاسه', 150, 90, 2, 20, 0, null, 's'],
+  ['faloode', 'فالوده', 'تنقلات و شیرینی', '۱ کاسه', 200, 180, 0.5, 44, 0.2, null, 's'],
+  ['pirashki_khame', 'پیراشکی خامه‌ای', 'تنقلات و شیرینی', '۱ عدد', 80, 300, 4, 28, 19, null, 's'],
+  ['mast_mive', 'ماست میوه‌ای', 'صبحانه و لبنیات', '۱ عدد', 150, 140, 5, 22, 3.5, null, 'bs'],
+  ['shir_ghahve', 'شیرقهوه', 'نوشیدنی', '۱ لیوان', 240, 160, 8, 20, 5, null, 's'],
+];
+FOOD_DB.push(...FOOD_DB2);
+/* which meals each food fits; default by category, with exceptions for the original list */
+const FOOD_MEALS_BY_CAT = { 'غذای اصلی': 'ld', 'خورش': 'ld', 'آش و سوپ': 'ld', 'نان و غلات': 'bld', 'صبحانه و لبنیات': 'b', 'گوشت و پروتئین': 'ld', 'میوه': 'bs', 'سبزی و سالاد': 'ld', 'تنقلات و شیرینی': 's', 'نوشیدنی': 'bs', 'فست‌فود': 'ld', 'مکمل': 's' };
+const FOOD_MEALS_OVR = {
+  rice: 'ld', rice_plate: 'ld', oat: 'b', cornflakes: 'b', toast: 'bs', baguette: 'bld', potato: 'bld',
+  omlet: 'bd', halim: 'b', adasi: 'bd', kalepache: 'b', egg: 'bds', nimroo: 'bd',
+  mast_low: 'bld', mast_full: 'bld', mast_greek: 'bls', shir_low: 'bs', shir_full: 'bs', kashk: 'ld',
+  doogh: 'ld', nooshabe: 'lds', abmive: 'bs', sharbat: 's', maoshaeer: 'ld', chai: 'bs', chai_ghand: 'bs', ghahve: 'bs', cappuccino: 's',
+  sosis: 'bd', kalbas: 'bd', tuna: 'ld', gojeh: 'bld', sabzi: 'bld', khiar: 'bs', khorma: 'bs', gerdoo: 'bs',
+  olivier_sand: 'lds', olivier: 'lds', fries: 'lds',
+};
+const foodMeals = (id, cat, given) => given || FOOD_MEALS_OVR[id] || FOOD_MEALS_BY_CAT[cat] || 'blds';
 /* one-line shopping items for raw foods (bread, dairy, fruit...) use the food name itself */
 
 /* ---- js/data/exercises.js ---- */
@@ -2281,7 +2616,7 @@ const Tasks = (() => {
     const subsDone = (t.subtasks || []).filter((s) => s.done).length, subsN = (t.subtasks || []).length;
     const subBits = [];
     if (isRec(t)) subBits.push(icon('repeat', 13));
-    if (subsN) subBits.push(`${U.fa(subsDone)}/${U.fa(subsN)} زیرکار`);
+    if (subsN) subBits.push(`${U.fa(subsDone)}/${U.fa(subsN)} قدم`);
     const goal = t.goalId && S.goals.find((g) => g.id === t.goalId);
     if (goal) subBits.push(`${icon('target', 13)} ${U.esc(goal.title)}`);
     return {
@@ -2309,7 +2644,7 @@ const Tasks = (() => {
       { k: 'priority', label: 'اولویت', type: 'chips', opts: PRIO },
       { k: 'reminder', label: 'یادآوری', type: 'select', opts: REMIND, hint: 'یادآوری فقط برای کاری که ساعت دارد کار می‌کند.' },
       { k: 'rec', label: 'تکرار', type: 'rec' },
-      { k: 'subs', label: 'زیرکارها', type: 'html', html: `<div class="subs" data-subs></div><button type="button" class="btn sm ghost" data-add-sub>${icon('plus', 16)} زیرکار</button>` },
+      { k: 'subs', label: '', type: 'html', html: `<div class="subs" data-subs></div><button type="button" class="link small" data-add-sub>${icon('plus', 14)} قدم‌ها (تقسیم کار به چند قدم کوچک)</button>` },
       { k: 'note', label: 'یادداشت', type: 'textarea', rows: 2 },
       App.on('goals') && goals.length ? { k: 'goalId', label: 'مربوط به هدف', type: 'select', opts: [['', '— بدون هدف —'], ...goals.map((g) => [g.id, g.title])] } : null,
       App.on('work') && projects.length ? { k: 'projectId', label: 'پروژه', type: 'select', opts: [['', '— بدون پروژه —'], ...projects.map((p) => [p.id, p.title])], hint: 'برای کارهای کاری' } : null,
@@ -2326,7 +2661,7 @@ const Tasks = (() => {
       title: isNew ? 'کار جدید' : 'ویرایش کار', fields: f.filter(Boolean), vals,
       after: (frm) => {
         const box = frm.querySelector('[data-subs]');
-        const draw = () => { box.innerHTML = subs.map((s, i) => `<div class="row sub-row"><button type="button" class="ck ${s.done ? 'on' : ''}" data-sd="${i}" aria-label="تیک زیرکار">${icon('check', 14)}</button><input value="${U.esc(s.t)}" data-si="${i}" placeholder="زیرکار"><button type="button" class="icon-btn" data-sx="${i}" aria-label="حذف زیرکار">${icon('close', 16)}</button></div>`).join(''); };
+        const draw = () => { const ab = frm.querySelector('[data-add-sub]'); if (ab) ab.innerHTML = icon('plus', 14) + (subs.length ? ' قدم دیگر' : ' قدم‌ها (تقسیم کار به چند قدم کوچک)'); box.innerHTML = subs.map((s, i) => `<div class="row sub-row"><button type="button" class="ck ${s.done ? 'on' : ''}" data-sd="${i}" aria-label="تیک زیرکار">${icon('check', 14)}</button><input value="${U.esc(s.t)}" data-si="${i}" placeholder="قدم ${U.fa(i + 1)}"><button type="button" class="icon-btn" data-sx="${i}" aria-label="حذف زیرکار">${icon('close', 16)}</button></div>`).join(''); };
         draw();
         frm.querySelector('[data-add-sub]').onclick = () => { subs.push({ id: U.uid(), t: '', done: false }); draw(); const ins = box.querySelectorAll('input'); ins[ins.length - 1].focus(); };
         box.addEventListener('input', (e) => { const i = e.target.dataset.si; if (i !== undefined) subs[+i].t = e.target.value; });
@@ -2772,7 +3107,7 @@ const Calendar = (() => {
   const C = 'var(--c-cal)';
   const KINDS = { event: ['رویداد', 'calendar', 'var(--c-cal)'], meeting: ['جلسه', 'meeting', 'var(--c-work)'], birthday: ['تولد', 'gift', 'var(--c-mood)'], anniversary: ['سالگرد', 'heart', 'var(--c-goals)'] };
   const REMIND = [['', 'بدون یادآوری'], ['0', 'سر ساعت'], ['10', '۱۰ دقیقه قبل'], ['30', '۳۰ دقیقه قبل'], ['60', '۱ ساعت قبل'], ['1440', '۱ روز قبل'], ['10080', '۱ هفته قبل']];
-  let sel = null, vy = null, vm = null;
+  let sel = null, vy = null, vm = null, noteT = null;
   const recOf = (e) => Object.assign({ start: e.date }, e.rec);
   const isRec = (e) => !!(e.rec && e.rec.t);
   function occurrences(e, a, b) {
@@ -2859,22 +3194,58 @@ const Calendar = (() => {
       onDelete: isNew ? null : () => { S.events = S.events.filter((x) => x.id !== e.id); DB.save('events'); App.refresh(); },
     });
   }
+  /* paper-calendar month page: big Jalali day, small Gregorian + Hijri, Fridays shaded, event titles in the cells */
+  const G_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const WD_EN = ['Sat.', 'Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.'];
   function monthGrid(y, m) {
     const first = J.fromJ(y, m, 1), len = J.monthLen(y, m), lead = J.wd(first), today = J.today();
     const a = first, b = J.monthEnd(y, m);
     const evDays = {};
-    S.events.forEach((e) => occurrences(e, a, b).forEach((d) => { (evDays[d] = evDays[d] || []).push(KINDS[e.kind || 'event'][2]); }));
-    let cells = J.WD_SHORT.map((w) => `<span class="cal-wd">${w}</span>`).join('');
-    for (let i = 0; i < lead; i++) cells += '<span></span>';
+    S.events.forEach((e) => occurrences(e, a, b).forEach((d) => { (evDays[d] = evDays[d] || []).push({ t: e.title || (e.person || ''), c: KINDS[e.kind || 'event'][2] }); }));
+    (Platform.calendar.cached || []).forEach((x) => { if (x.date >= a && x.date <= b) (evDays[x.date] = evDays[x.date] || []).push({ t: x.title, c: 'var(--c-cal)' }); });
+    const g1 = first.split('-').map(Number), g2 = b.split('-').map(Number);
+    const gHead = g1[1] === g2[1] ? `${G_MONTHS[g1[1] - 1]} ${g1[0]}` : `${G_MONTHS[g1[1] - 1]}${g1[0] !== g2[0] ? ' ' + g1[0] : ''} / ${G_MONTHS[g2[1] - 1]} ${g2[0]}`;
+    const h1 = Holidays.hijriIR(first), h2 = Holidays.hijriIR(b);
+    const hHead = h1 && h2 ? (h1.m === h2.m ? `${Holidays.H_MONTHS[h1.m - 1]} ${U.fa(h1.y)}` : `${Holidays.H_MONTHS[h1.m - 1]} / ${Holidays.H_MONTHS[h2.m - 1]} ${U.fa(h2.y)}`) : '';
+    let cells = J.WEEKDAYS.map((w, i) => `<span class="pc-wd ${i === 6 ? 'fri' : ''}"><b>${w}</b><small>${WD_EN[i]}</small></span>`).join('');
+    for (let i = 0; i < lead; i++) cells += `<span class="pc-d pc-empty ${i === 6 ? 'fri' : ''}"></span>`;
     for (let d = 1; d <= len; d++) {
       const iso = J.fromJ(y, m, d);
       const hol = Holidays.isHoliday(iso);
       const g = iso.split('-').map(Number);
-      const dots = (evDays[iso] || []).slice(0, 3).map((c) => `<i style="--dc:${c}"></i>`).join('');
+      const h = Holidays.hijriIR(iso);
+      const evs = evDays[iso] || [];
       const tasksN = App.on('tasks') ? Tasks.forDay(iso).filter((x) => !x.overdue).length : 0;
-      cells += `<button class="cal-d ${hol ? 'hol' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''}" data-a="calendar.sel" data-d="${iso}" aria-label="${J.fmt(iso, 'full')}${hol ? ' تعطیل' : ''}"><span>${U.fa(d)}</span><small>${U.fa(g[2])}</small><span class="dots">${dots}${tasksN ? '<i style="--dc:var(--c-tasks)"></i>' : ''}</span></button>`;
+      const evHtml = evs.slice(0, 2).map((x) => `<span class="pc-ev" style="--dc:${x.c}">${U.esc(x.t)}</span>`).join('') + (evs.length > 2 ? `<span class="pc-more">+${U.fa(evs.length - 2)}</span>` : '');
+      cells += `<button class="pc-d ${J.wd(iso) === 6 ? 'fri' : ''} ${hol ? 'hol' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''}" data-a="calendar.sel" data-d="${iso}" aria-label="${J.fmt(iso, 'full')}${hol ? ' تعطیل' : ''}">
+        <span class="pc-top"><span class="pc-n">${U.fa(d)}</span><span class="pc-sub"><i dir="ltr">${g[2]}</i><i>${h ? U.fa(h.d) : ''}</i></span></span>${evHtml}${tasksN ? `<span class="pc-tk" aria-label="${U.fa(tasksN)} کار">${U.fa(tasksN)} کار</span>` : ''}</button>`;
     }
-    return `<div class="cal"><div class="cal-nav"><button class="icon-btn" data-a="calendar.month" data-v="-1" aria-label="ماه قبل">${icon('chevR')}</button><strong>${J.MONTHS[m - 1]} ${U.fa(y)}</strong><button class="icon-btn" data-a="calendar.month" data-v="1" aria-label="ماه بعد">${icon('chevL')}</button></div><div class="cal-grid">${cells}</div></div>`;
+    const tail = (7 - ((lead + len) % 7)) % 7;
+    for (let i = 0; i < tail; i++) cells += `<span class="pc-d pc-empty ${(lead + len + i) % 7 === 6 ? 'fri' : ''}"></span>`;
+    return `<div class="pcal"><div class="pc-head">
+        <div class="pc-title"><span class="pc-year">${U.fa(y)}</span><b>${J.MONTHS[m - 1]}</b></div>
+        <div class="pc-meta"><span dir="ltr">${gHead}</span><span>${hHead}</span></div>
+        <div class="pc-mnum">${U.fa(String(m).padStart(2, '0'))}</div>
+      </div>
+      <div class="pc-nav"><button class="icon-btn" data-a="calendar.month" data-v="-1" aria-label="ماه قبل">${icon('chevR')}</button>${(() => { const [ty, tm] = J.toJ(today); return ty === y && tm === m ? '' : `<button class="btn sm ghost" data-a="calendar.sel" data-d="${today}">برو به امروز</button>`; })()}<button class="icon-btn" data-a="calendar.month" data-v="1" aria-label="ماه بعد">${icon('chevL')}</button></div>
+      <div class="pc-grid">${cells}</div></div>`;
+  }
+  /* occasions of the viewed month (official holidays + well-known days + the user's birthdays) and the month note */
+  function monthExtras(y, m) {
+    const a = J.fromJ(y, m, 1), len = J.monthLen(y, m);
+    const rows = [];
+    for (let d = 1; d <= len; d++) {
+      const iso = J.fromJ(y, m, d);
+      Holidays.get(iso).forEach((h) => rows.push({ d, t: h.title + (h.approx ? ' (تقریبی)' : ''), hol: true }));
+    }
+    Holidays.occasions(m).forEach(([, d, title]) => { if (d <= len) rows.push({ d, t: title, hol: false }); });
+    S.events.filter((e) => e.kind === 'birthday' || e.kind === 'anniversary').forEach((e) => occurrences(e, a, J.monthEnd(y, m)).forEach((iso) => rows.push({ d: J.toJ(iso)[2], t: e.title || e.person, hol: false, mine: true })));
+    rows.sort((p, q) => p.d - q.d);
+    const occ = rows.length ? `<div class="pc-occ">${rows.map((r) => `<span class="${r.hol ? 'hol' : ''}"><b>${U.fa(r.d)}</b> ${U.esc(r.t)}</span>`).join('')}</div>` : '<p class="small muted">مناسبتی در این ماه ثبت نشده.</p>';
+    const key = `${y}-${String(m).padStart(2, '0')}`;
+    const note = ((S.settings.calNotes || {})[key]) || '';
+    return UI.sec(`مناسبت‌های ${J.MONTHS[m - 1]}`, `<div class="card">${occ}</div>`) +
+      UI.sec(`یادداشت ${J.MONTHS[m - 1]}`, `<div class="card pc-note"><textarea rows="4" data-ch="calendar.note" data-k="${key}" placeholder="یادداشت‌های این ماه را اینجا بنویس…">${U.esc(note)}</textarea><small class="muted">خودکار ذخیره می‌شود.</small></div>`);
   }
   function screen() {
     const today = J.today();
@@ -2885,10 +3256,12 @@ const Calendar = (() => {
     const items = Agenda.sort(App.agenda(sel));
     let body = monthGrid(vy, vm);
     const gd = sel.split('-').map(Number);
-    body += `<div class="row"><div class="grow"><h3 style="font-size:16px">${J.fmt(sel, 'full')}</h3><p class="small muted">${U.fa(gd[2])}/${U.fa(gd[1])}/${U.fa(gd[0])} میلادی${sel !== today ? ' · ' + J.rel(sel) : ''}</p></div>${sel !== today ? `<button class="btn sm ghost" data-a="calendar.sel" data-d="${today}">امروز</button>` : ''}</div>`;
+    const hs = Holidays.hijriIR(sel);
+    body += `<div class="row"><div class="grow"><h3 style="font-size:16px">${J.fmt(sel, 'full')}</h3><p class="small muted">${U.fa(gd[2])}/${U.fa(gd[1])}/${U.fa(gd[0])} میلادی${hs ? ' · ' + U.fa(hs.d) + ' ' + Holidays.H_MONTHS[hs.m - 1] + ' ' + U.fa(hs.y) : ''}${sel !== today ? ' · ' + J.rel(sel) : ''}</p></div>${sel !== today ? `<button class="btn sm ghost" data-a="calendar.sel" data-d="${today}">امروز</button>` : ''}</div>`;
     if (hol.length || J.wd(sel) === 6) body += `<div class="notice" style="--warn:var(--hol)">${icon('flag', 18)}<div>${hol.length ? hol.map((h) => `<b>${U.esc(h.title)}</b>${h.approx ? ' <span class="small muted">(تاریخ قمری تقریبی؛ ممکن است ±۱ روز جابه‌جا شود)</span>' : ''}`).join('<br>') : '<b>جمعه</b>'}<br><span class="small">تعطیل رسمی</span></div></div>`;
     body += UI.sec('رویدادها', evs.length ? `<div class="list">${evs.map((e) => eventRow(e, sel)).join('')}</div>` : '<p class="muted small">رویدادی ثبت نشده.</p>', `<button class="link" data-a="calendar.newEvent">${icon('plus', 16)} رویداد</button>`);
     if (items.length) body += UI.sec('کارهای این روز', `<div class="list">${items.map((i) => Agenda.itemHtml(i, sel)).join('')}</div>`);
+    body += monthExtras(vy, vm);
     body += syncCard();
     body += UI.fab('calendar.newEvent', 'رویداد جدید');
     return { title: 'تقویم', color: C, body };
@@ -2918,6 +3291,7 @@ const Calendar = (() => {
       month: (d) => { vm += +d.v; if (vm < 1) { vm = 12; vy--; } if (vm > 12) { vm = 1; vy++; } App.refresh(); },
       newEvent: (d) => edit(null, d.kind ? { kind: d.kind } : {}),
       edit: (d) => edit(S.events.find((e) => e.id === d.id)),
+      note: (d, el) => { S.settings.calNotes = S.settings.calNotes || {}; const v = el.value; if (v.trim()) S.settings.calNotes[d.k] = v; else delete S.settings.calNotes[d.k]; clearTimeout(noteT); noteT = setTimeout(() => DB.save('settings'), 400); },
       sync: (d, el) => { S.settings.calSync = el.checked; DB.save('settings'); if (el.checked) Platform.calendar.read().then(() => App.refresh()); },
     },
   });
@@ -2996,6 +3370,12 @@ const Finance = (() => {
           frm.querySelector('[data-fk=accountId] label').textContent = ty === 'inc' ? 'به حساب' : 'از حساب';
         };
         frm.addEventListener('change', sync); sync();
+        ['catExp', 'catInc'].forEach((k) => {
+          const box = frm.querySelector(`[data-fk=${k}]`); if (!box) return;
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'link small'; b.style.marginTop = '4px'; b.innerHTML = icon('plus', 14) + ' دستهٔ جدید';
+          b.onclick = () => editCat(null, { type: k === 'catExp' ? 'exp' : 'inc', color: UI.COLORS[S.cats.length % UI.COLORS.length] }, (c) => { const sel = box.querySelector('select'); if (!sel) return; const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); sel.value = c.id; });
+          box.appendChild(b);
+        });
       },
       onSave: (v) => {
         if (!(v.amount > 0)) { App.toast('مبلغ را درست وارد کنید'); return false; }
@@ -3127,46 +3507,104 @@ const Finance = (() => {
   /* ---------- SMS parsing (Iranian bank messages) ---------- */
   function parseSms(text) {
     const out = [];
-    const chunks = U.en(text).split(/\n\s*\n|(?=\b(?:بانک|بلو|BANK)\b)/i).map((s) => s.trim()).filter(Boolean);
+    const norm = (x) => U.en(String(x || '')).replace(/[يى]/g, 'ی').replace(/ك/g, 'ک').replace(/[٬،]/g, ',').replace(/[‌‏‎]/g, ' ').replace(/\r/g, '').replace(/[ \t]+/g, ' ');
+    const chunks = norm(text).split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean);
+    const BAL = /(مانده|موجودی|ماند|balance|مانده حساب)/i;
+    const ACC = /(از|به|حساب|کارت|شماره|ش\.?ح|ش\.?ک|card|acc|سپرده|شبا|IR\d)/i;
+    const DATEISH = /(\d{2,4}[\/\-]\d{1,2}[\/\-]\d{1,2}|\d{1,2}:\d{2})/g;
+    const toNum = (s) => Number(String(s).replace(/,/g, ''));
+    /* a plausible money figure: grouped with commas, or a plain number up to 12 digits that is not an account/card number */
+    const money = (seg) => {
+      const m = seg.replace(DATEISH, ' ').match(/([+\-−])?\s*(\d{1,3}(?:,\d{3})+|\d{3,12})\s*([+\-−])?/);
+      if (!m) return null;
+      const n = toNum(m[2]);
+      if (!(n > 0)) return null;
+      return { n, sign: m[1] || m[3] || '', grouped: /,/.test(m[2]) };
+    };
     chunks.forEach((raw) => {
-      const s = raw.replace(/[٬،]/g, ',').replace(/‌/g, ' ');
-      const lines = s.split(/\n/);
-      let amount = null, type = null;
-      const isBal = (l) => /(مانده|موجودی|ماند|مانده حساب|balance)/i.test(l);
+      const s = raw;
+      const lines = s.split(/\n/).map((l) => l.trim()).filter(Boolean);
+      let amount = null, sign = '';
+      /* 1) the line that says «مبلغ» */
       for (const l of lines) {
-        if (isBal(l)) continue;
-        const m = l.match(/([+\-−])?\s*(\d{1,3}(?:,\d{3})+|\d{4,})\s*([+\-−])?/);
-        if (!m) continue;
-        if (/(حساب|کارت|card|acc|شماره|ش\.ح|\*)/i.test(l) && !/(مبلغ|برداشت|واریز|خرید|انتقال)/.test(l)) continue;
-        amount = Number(m[2].replace(/,/g, ''));
-        const sign = m[1] || m[3];
-        if (/(واریز|افزایش|سود|دریافت|انتقال به حساب شما|بستانکار)/.test(l) || sign === '+') type = 'inc';
-        else if (/(برداشت|خرید|کسر|انتقال|پرداخت|بدهکار|قبض)/.test(l) || sign === '-' || sign === '−') type = 'exp';
-        break;
+        if (BAL.test(l)) continue;
+        const i = l.search(/مبلغ|amount/i);
+        if (i < 0) continue;
+        const r = money(l.slice(i)); if (r) { amount = r.n; sign = r.sign; break; }
       }
+      /* 2) a line with a transaction word (برداشت/واریز/خرید/…) whose number is not an account or card number */
+      if (amount === null) for (const l of lines) {
+        if (BAL.test(l)) continue;
+        if (!/(برداشت|واریز|خرید|انتقال|پرداخت|کسر|افزایش|بستانکار|بدهکار|سود|قسط|\d\s*ریال|[+\-−]\s*$|^[+\-−]\s*\d)/.test(l)) continue;
+        let seg = l;
+        /* drop "از: 7008…" / "به: …" / "کارت …1234" parts */
+        seg = seg.replace(/(از|به|حساب|کارت|شماره|ش\.?ح|ش\.?ک|سپرده|شبا|card|acc)\s*[:：]?\s*[\d\*\-\.\s]{4,}/gi, ' ');
+        const r = money(seg);
+        if (!r) continue;
+        if (!r.grouped && String(r.n).length >= 10) continue; /* 10+ digits without commas = account/card number */
+        amount = r.n; sign = r.sign; break;
+      }
+      /* 3) any number written with «ریال» */
+      if (amount === null) { const m = s.match(/(\d{1,3}(?:,\d{3})+|\d{3,12})\s*ریال/); if (m && !BAL.test(s.slice(Math.max(0, m.index - 12), m.index))) amount = toNum(m[1]); }
       if (!amount) return;
-      if (!type) type = /(واریز|سود|\+)/.test(s) ? 'inc' : 'exp';
+      let type = null;
+      if (sign === '+' ) type = 'inc'; else if (sign === '-' || sign === '−') type = 'exp';
+      if (!type) type = /(واریز|افزایش|سود|بستانکار|انتقال به حساب شما|دریافت)/.test(s) && !/(برداشت|خرید|کسر|بدهکار)/.test(s) ? 'inc' : 'exp';
       let date = J.today();
-      const dm = s.match(/(14\d\d)[\/\-](\d{1,2})[\/\-](\d{1,2})/) || s.match(/\b(0?\d{1,2})[\/\-](\d{1,2})[\/\-]?(\d{0,2})?\b(?=.*\d{1,2}:\d{2})/);
-      if (dm && dm[1] && dm[1].length === 4) { try { date = J.fromJ(+dm[1], +dm[2], +dm[3]); } catch (e) { /* keep today */ } }
-      else if (dm && dm[3] === undefined && /(\d{1,2})\/(\d{1,2})/.test(dm[0])) { const [jy] = J.toJ(J.today()); try { date = J.fromJ(jy, +dm[1], +dm[2]); } catch (e) { /* keep */ } }
-      const bank = (s.match(/(ملت|ملی|صادرات|تجارت|سپه|کشاورزی|مسکن|رفاه|پاسارگاد|سامان|پارسیان|اقتصاد نوین|آینده|شهر|دی|سینا|رسالت|بلو|توسعه تعاون|کارآفرین|خاورمیانه)/) || [])[1] || '';
-      const desc = ((s.match(/(?:بابت|خرید از|خرید|پذیرنده|توضیح)\s*[:：]?\s*([^\n\d]{2,30})/) || [])[1] || '').trim();
-      out.push({ amount, type, date, bank, note: desc || (bank ? (type === 'inc' ? 'واریز ' : 'برداشت ') + bank : ''), raw, catId: guessCat(desc + ' ' + s, type) });
+      const dm = s.match(/(14\d\d)[\/\-](\d{1,2})[\/\-](\d{1,2})/) || s.match(/\b(\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/);
+      if (dm) { let jy = +dm[1]; if (jy < 100) jy += 1400; try { const d = J.fromJ(jy, +dm[2], +dm[3]); if (d <= J.addDays(J.today(), 1)) date = d; } catch (e) { /* keep today */ } }
+      else { const dm2 = s.match(/\b(\d{1,2})\/(\d{1,2})\b(?=[^\n]*\d{1,2}:\d{2})/); if (dm2) { const [jy] = J.toJ(J.today()); try { date = J.fromJ(jy, +dm2[1], +dm2[2]); } catch (e) { /* keep */ } } }
+      const bank = (s.match(/بانک\s*(ملت|ملی|صادرات|تجارت|سپه|کشاورزی|مسکن|رفاه|پاسارگاد|سامان|پارسیان|اقتصاد نوین|آینده|شهر|دی|سینا|رسالت|بلو|توسعه تعاون|کارآفرین|خاورمیانه|ایران زمین|گردشگری|سرمایه|پست بانک|قرض الحسنه مهر)/) || [])[1] || '';
+      const desc = ((s.match(/(?:بابت|خرید از|پذیرنده|فروشگاه|توضیح|شرح)\s*[:：]?\s*([^\n\d:]{2,30})/) || [])[1] || (s.match(/(انتقال وجه[^\n\d:]{0,20}|خرید[^\n\d:]{0,20}|پرداخت قبض|قسط وام|کارمزد)/) || [])[1] || '').trim();
+      /* bank names must not decide the category (e.g. «بانک مسکن» ≠ «مسکن») */
+      const forCat = (desc + ' ' + s).replace(/بانک\s*[^\n\d:]{0,15}/g, ' ');
+      out.push({ amount, type, date, bank, note: desc || (type === 'inc' ? 'واریز' : 'برداشت') + (bank ? ' بانک ' + bank : ''), raw, catId: /انتقال وجه|کارت به کارت/.test(s) ? guessCat('سایر', type) : guessCat(forCat, type) });
     });
     return out;
+  }
+  /* Android 13+: an app installed outside the store needs «Allow restricted settings» before SMS can be allowed */
+  function smsHelp() {
+    const s = UI.sheet({ title: 'اجازهٔ خواندن پیامک',
+      body: `<div class="stack small"><p>اندروید برای برنامه‌هایی که خارج از بازار نصب شده‌اند، اجازهٔ پیامک را قفل می‌کند. فقط یک بار این کارها را انجام دهید:</p>
+        <ol class="guide-steps">
+          <li>دکمهٔ «باز کردن تنظیمات خودنگار» را در پایین بزنید.</li>
+          <li>در صفحهٔ باز شده، بالا روی <b>سه‌نقطه (⋮)</b> بزنید و <b>«اجازه دادن به تنظیمات محدود»</b> (<bdi dir="ltr">Allow restricted settings</bdi>) را بزنید و با رمز یا اثر انگشت گوشی تأیید کنید.</li>
+          <li>همان‌جا وارد <b>«مجوزها»</b> (<bdi dir="ltr">Permissions</bdi>) شوید ← <b>«پیامک»</b> (<bdi dir="ltr">SMS</bdi>) ← <b>«مجاز»</b>.</li>
+          <li>به خودنگار برگردید و دوباره «ثبت از پیامک بانک» را باز کنید.</li>
+        </ol>
+        <p class="muted">اگر سه‌نقطه یا آن گزینه را ندیدید: یک بار دکمهٔ «اجازهٔ خواندن پیامک» را در خودنگار بزنید و پیام هشدار را ببندید، بعد دوباره به تنظیمات بروید. نام گزینه‌ها در گوشی‌های مختلف کمی فرق دارد.</p>
+        <p class="muted">بدون این اجازه هم می‌توانید متن پیامک را کپی کنید و در کادر «متن پیامک» بچسبانید.</p></div>`,
+      foot: '<button class="btn primary" data-open>باز کردن تنظیمات خودنگار</button>' });
+    s.el.querySelector('[data-open]').onclick = async () => { const ok = await Platform.sms.openSettings(); if (!ok) App.toast('تنظیمات باز نشد؛ از تنظیمات گوشی ← برنامه‌ها ← خودنگار وارد شوید'); };
   }
   function smsSheet() {
     const native = Platform.sms.available;
     const s = UI.sheet({
       title: 'ثبت از پیامک بانک',
-      body: `${native ? '' : `<div class="notice info">${icon('message', 18)}<div class="small">در نسخهٔ اندروید پیامک‌های بانک خودکار خوانده و پیشنهاد می‌شوند. اینجا متن پیامک را کپی و در کادر زیر بچسبانید (چند پیامک با یک خط خالی جدا شوند).</div></div>`}
+      body: `${native ? '<div data-smsperm></div>' : `<div class="notice info">${icon('message', 18)}<div class="small">در نسخهٔ اندروید پیامک‌های بانک خودکار خوانده و پیشنهاد می‌شوند. اینجا متن پیامک را کپی و در کادر زیر بچسبانید (چند پیامک با یک خط خالی جدا شوند).</div></div>`}
         <div class="fld" style="margin-top:10px"><label for="smsText">متن پیامک</label><textarea id="smsText" rows="5" placeholder="بانک ملت&#10;برداشت: 1,250,000&#10;مانده: 8,400,000&#10;1405/08/02-14:30"></textarea></div>
         <div data-res class="stack" style="margin-top:12px"></div>`,
       foot: '<button class="btn primary" data-parse>بررسی پیامک</button>',
     });
     const res = s.el.querySelector('[data-res]');
     let found = [];
+    if (native) {
+      const box = s.el.querySelector('[data-smsperm]');
+      const paint = (st) => {
+        box.innerHTML = st === 'granted'
+          ? `<p class="small ok-t">${icon('check', 14)} خواندن خودکار پیامک‌های بانک فعال است.</p>`
+          : `<div class="notice info sms-perm">${icon('message', 18)}<div class="grow small"><b>خواندن خودکار پیامک بانک</b><br>با اجازهٔ شما، پیامک‌های بانکی تازه خودکار اینجا می‌آیند. بدون اجازه هم می‌توانید متن پیامک را کپی کنید و پایین بچسبانید.<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn sm mod" data-smsask>اجازهٔ خواندن پیامک</button><button class="btn sm ghost" data-smshelp>اجازه داده نمی‌شود؟</button></div></div></div>`;
+      };
+      Platform.sms.permission().then(paint);
+      box.addEventListener('click', async (e) => {
+        if (e.target.closest('[data-smshelp]')) { smsHelp(); return; }
+        if (!e.target.closest('[data-smsask]')) return;
+        const st = await Platform.sms.request();
+        paint(st);
+        if (st === 'granted') { if (Platform.sms.fillSheet) Platform.sms.fillSheet(); }
+        else smsHelp();
+      });
+    }
     const draw = () => {
       if (!found.length) { res.innerHTML = '<p class="muted small">مبلغی در این متن پیدا نشد. مطمئن شوید پیامک شامل «برداشت» یا «واریز» و مبلغ است.</p>'; return; }
       res.innerHTML = `<p class="small muted">مبلغ پیامک‌های بانکی به ریال است. موارد زیر را بررسی و تأیید کنید:</p>` + found.map((f, i) => `<div class="card flat row"><div class="grow"><b class="${f.type === 'inc' ? 'ok-t' : ''}">${f.type === 'inc' ? 'واریز' : 'برداشت'} ${U.money(f.amount, { force: true })}</b><p class="small muted">${U.esc(catName(f.catId))} · ${J.fmt(f.date, 'short')}${f.bank ? ' · ' + U.esc(f.bank) : ''}</p></div><button class="btn sm mod" data-ok="${i}">${f.saved ? 'ثبت شد' : 'ثبت'}</button></div>`).join('');
@@ -3186,16 +3624,22 @@ const Finance = (() => {
     }).join('');
     return { title: 'دسته‌بندی‌ها', color: C, body: `<p class="small muted">کلیدواژه‌ها برای حدس خودکار دسته در «افزودن سریع» و پیامک بانک استفاده می‌شوند.</p>${UI.sec('هزینه‌ها', sect('exp'), `<button class="link" data-a="finance.newCat" data-type="exp">${icon('plus', 16)} دسته</button>`)}${UI.sec('درآمدها', sect('inc'), `<button class="link" data-a="finance.newCat" data-type="inc">${icon('plus', 16)} دسته</button>`)}` };
   }
-  function editCat(c, preset = {}) {
+  function editCat(c, preset = {}, then = null) {
     const isNew = !c;
     c = c || Object.assign({ id: U.uid(), name: '', type: 'exp', parent: null, color: UI.COLORS[0], kw: [] }, preset);
     const isRoot = !c.parent;
     UI.formSheet({ title: isNew ? (c.parent ? 'زیردستهٔ جدید' : 'دستهٔ جدید') : 'ویرایش دسته',
       fields: [{ k: 'name', label: 'نام', req: true }, { k: 'kw', label: 'کلیدواژه‌ها', ph: 'با ویرگول جدا کنید: اسنپ، تاکسی', hint: 'اگر این کلمه‌ها در توضیح یا پیامک بیاید، همین دسته پیشنهاد می‌شود.' }, isRoot ? { k: 'color', label: 'رنگ', type: 'color' } : null, isRoot && c.type === 'exp' ? { k: 'budget', label: 'بودجهٔ ماهانه', type: 'money', hint: 'خالی = بدون بودجه' } : null].filter(Boolean),
       vals: Object.assign({}, c, { kw: (c.kw || []).join('، '), budget: S.budgets[c.id] || null }),
-      onSave: (v) => { c.name = v.name; c.kw = (v.kw || '').split(/[،,]/).map((x) => x.trim()).filter(Boolean); if (v.color) c.color = v.color; if (isRoot && c.type === 'exp') { if (v.budget) S.budgets[c.id] = v.budget; else delete S.budgets[c.id]; } if (isNew) S.cats.push(c); DB.save('cats', 'budgets'); App.refresh(); },
+      onSave: (v) => { c.name = v.name; c.kw = (v.kw || '').split(/[،,]/).map((x) => x.trim()).filter(Boolean); if (v.color) c.color = v.color; if (isRoot && c.type === 'exp') { if (v.budget) S.budgets[c.id] = v.budget; else delete S.budgets[c.id]; } if (isNew) S.cats.push(c); DB.save('cats', 'budgets'); App.refresh(); if (then) setTimeout(() => then(c), 50); },
       onDelete: isNew ? null : async () => {
-        if (S.txs.some((t) => t.catId === c.id || (cat(t.catId) || {}).parent === c.id)) { App.toast('این دسته تراکنش دارد؛ ابتدا تراکنش‌ها را به دستهٔ دیگری ببرید'); return; }
+        const used = S.txs.filter((t) => t.catId === c.id || (cat(t.catId) || {}).parent === c.id);
+        if (used.length) {
+          const other = S.cats.find((x) => x.type === c.type && !x.parent && x.id !== c.id && /سایر/.test(x.name)) || S.cats.find((x) => x.type === c.type && !x.parent && x.id !== c.id);
+          if (!other) { App.toast('این آخرین دسته است و حذف نمی‌شود'); return; }
+          if (!(await UI.confirm(`${U.fa(used.length)} تراکنش در این دسته هست. با حذف دسته، این تراکنش‌ها به «${other.name}» منتقل می‌شوند.`, { ok: 'حذف و انتقال', danger: true }))) return;
+          used.forEach((t) => { t.catId = other.id; }); DB.save('txs');
+        }
         S.cats = S.cats.filter((x) => x.id !== c.id && x.parent !== c.id); delete S.budgets[c.id]; DB.save('cats', 'budgets'); App.refresh();
       } });
   }
@@ -3213,7 +3657,7 @@ const Finance = (() => {
     const [y, m] = my;
     const eye = `<button class="icon-btn ${S.settings.hideMoney ? 'on' : ''}" data-a="finance.hide" aria-label="${S.settings.hideMoney ? 'نمایش مبالغ' : 'پنهان کردن مبالغ'}">${icon(S.settings.hideMoney ? 'eyeOff' : 'eye')}</button>`;
     const head = `${eye}<button class="icon-btn" data-a="finance.sms" aria-label="ثبت از پیامک بانک">${icon('message')}</button><button class="icon-btn" data-a="finance.more" aria-label="بیشتر">${icon('more')}</button>`;
-    let body = UI.seg('finance.tab', tab, [['overview', 'خلاصه'], ['txs', 'تراکنش‌ها'], ['budget', 'بودجه'], ['bills', 'اقساط و قبوض'], ['debts', 'طلب و بدهی'], ['savings', 'پس‌انداز'], ['report', 'گزارش']]);
+    let body = UI.seg('finance.tab', tab, [['overview', 'خلاصه'], ['txs', 'تراکنش‌ها'], ['cats', 'دسته‌ها'], ['budget', 'بودجه'], ['bills', 'اقساط و قبوض'], ['debts', 'طلب و بدهی'], ['savings', 'پس‌انداز'], ['report', 'گزارش']]);
     const t = monthTotals(y, m);
     if (tab === 'overview') {
       body += `<div class="card stack">${monthNav()}<div class="grid3"><div class="stat"><small>درآمد</small><b class="ok-t">${U.money(t.inc, { noUnit: true })}</b></div><div class="stat"><small>هزینه</small><b>${U.money(t.exp, { noUnit: true })}</b></div><div class="stat"><small>تراز</small><b class="${t.inc - t.exp < 0 ? 'danger-t' : ''}">${U.money(t.inc - t.exp, { noUnit: true })}</b></div></div><p class="small muted">مبالغ به ${U.unitLabel()}</p>
@@ -3231,6 +3675,9 @@ const Finance = (() => {
       if (!list.length) body += UI.empty('wallet', 'در این ماه تراکنشی نیست.');
       Object.entries(U.groupBy(list, (x) => x.date)).forEach(([d, xs]) => { const dayExp = U.sum(xs.filter((x) => x.type === 'exp'), (x) => x.amount); body += UI.sec(`${J.fmt(d, 'wd')}`, `<div class="list">${xs.map(txRow).join('')}</div>`, dayExp ? `<span class="small muted num">هزینه: ${U.money(dayExp)}</span>` : ''); });
       body += UI.fab('finance.newTx', 'تراکنش جدید', 'data-type="exp"');
+    } else if (tab === 'cats') {
+      body += `<div class="row"><button class="btn mod grow" data-a="finance.newCat" data-type="exp">${icon('plus', 18)} دستهٔ هزینه</button><button class="btn ghost grow" data-a="finance.newCat" data-type="inc">${icon('plus', 18)} دستهٔ درآمد</button></div><p class="small muted">برای ویرایش یا حذف، روی هر دسته بزنید.</p>`;
+      body += catsScreen().body;
     } else if (tab === 'budget') {
       body += `<div class="card">${monthNav()}</div>`;
       const rows = budgetRows(y, m, 99);
@@ -3352,7 +3799,8 @@ const Food = (() => {
   const mealName = (k) => (MEALS.find((m) => m[0] === k) || [])[1] || '';
   let tab = 'diary', day = null, planWd = null;
   /* ---------- food lookup ---------- */
-  const builtin = () => FOOD_DB.map(([id, name, cat, serving, g, kcal, p, c, f, ing]) => ({ id: 'f:' + id, name, cat, serving, g, kcal, p, c, f, ing: ing ? ing.split('،').map((x) => x.trim()) : null }));
+  const builtin = () => FOOD_DB.map(([id, name, cat, serving, g, kcal, p, c, f, ing, meals]) => ({ id: 'f:' + id, name, cat, serving, g, kcal, p, c, f, ing: ing ? ing.split('،').map((x) => x.trim()) : null, meals: foodMeals(id, cat, meals) }));
+  const fitsMeal = (fd, meal) => !meal || (fd.meals || 'blds').includes(meal);
   let _bi = null;
   const allFoods = () => { if (!_bi) _bi = builtin(); return S.foods.concat(_bi); };
   const food = (id) => allFoods().find((x) => x.id === id);
@@ -3405,20 +3853,60 @@ const Food = (() => {
     s.el.querySelector('[data-new]').onclick = () => { s.close(); editFood(null, (f) => askQty(f, onPick)); };
     setTimeout(() => s.el.querySelector('#foodQ').focus({ preventScroll: true }), 250);
   }
+  function pickMany(meal, onDone, title) {
+    let q = '', scope = 'meal';
+    const chosen = new Map(); /* id -> qty */
+    const recentIds = [...new Set(S.meals.filter((m) => !meal || m.meal === meal).slice(-80).reverse().map((m) => m.foodId))].slice(0, 10);
+    const s = UI.sheet({
+      title, full: true,
+      body: `<div class="stack"><input id="foodQ" type="search" placeholder="جستجو در ${meal ? 'غذاهای ' + mealName(meal) : 'غذاها'}…" autocomplete="off">
+        <div class="chips" data-sc>${meal ? `<button class="chip on" data-v="meal">${mealName(meal)}</button>` : ''}<button class="chip ${meal ? '' : 'on'}" data-v="all">همهٔ غذاها</button><button class="chip" data-v="mine">غذاهای من</button></div>
+        <div data-list class="fp-list"></div>
+        <button class="btn ghost" data-new>${icon('plus', 18)} غذای جدید خودم</button><p class="small muted">مقادیر تقریبی و برای یک وعدهٔ معمول خانگی است.</p></div>`,
+      foot: `<button class="btn primary block" data-ok disabled>ثبت</button>`,
+    });
+    if (!meal) scope = 'all';
+    const list = s.el.querySelector('[data-list]'), ok = s.el.querySelector('[data-ok]');
+    const upd = () => { const n = chosen.size; ok.disabled = !n; ok.textContent = n ? `ثبت ${U.fa(n)} مورد` : 'غذا را تیک بزنید'; };
+    const row = (f) => { const on = chosen.has(f.id); const qv = chosen.get(f.id) || 1; return `<div class="fp-row ${on ? 'on' : ''}" data-f="${f.id}"><button type="button" class="fp-ck" data-t aria-pressed="${on}" aria-label="انتخاب ${U.esc(f.name)}">${icon('check', 16)}</button><button type="button" class="fp-main" data-t><b>${U.esc(f.name)}</b><small>${U.esc(f.serving)} · ${U.num(f.kcal)} کالری</small></button>${on ? `<span class="fp-qty"><button type="button" data-q="-1" aria-label="کمتر">−</button><b>${U.fa(qv)}</b><button type="button" data-q="1" aria-label="بیشتر">+</button></span>` : ''}</div>`; };
+    const draw = () => {
+      let items = scope === 'mine' ? S.foods.slice() : allFoods().filter((f) => scope === 'all' || fitsMeal(f, meal));
+      if (q) { const qq = q.replace(/‌/g, ' '); items = (scope === 'meal' ? allFoods() : items).filter((f) => f.name.replace(/‌/g, ' ').includes(qq)); }
+      else if (scope !== 'mine' && recentIds.length) { const rec = recentIds.map(food).filter(Boolean); items = rec.concat(items.filter((f) => !recentIds.includes(f.id))); }
+      const sel = [...chosen.keys()].map(food).filter((f) => f && !items.includes(f));
+      items = sel.concat(items).slice(0, 150);
+      list.innerHTML = items.length ? items.map(row).join('') : UI.empty('search', 'غذایی پیدا نشد. «غذای جدید خودم» را بزنید.');
+      upd();
+    };
+    draw();
+    s.el.querySelector('#foodQ').addEventListener('input', (e) => { q = e.target.value.trim(); draw(); });
+    s.el.querySelector('[data-sc]').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; scope = b.dataset.v; s.el.querySelectorAll('[data-sc] .chip').forEach((x) => x.classList.toggle('on', x === b)); draw(); });
+    list.addEventListener('click', (e) => {
+      const r = e.target.closest('[data-f]'); if (!r) return;
+      const id = r.dataset.f;
+      const qb = e.target.closest('[data-q]');
+      if (qb) { const steps = [0.5, 1, 1.5, 2, 3, 4]; let i = steps.indexOf(chosen.get(id)); if (i < 0) i = 1; i = U.clamp(i + +qb.dataset.q, 0, steps.length - 1); chosen.set(id, steps[i]); }
+      else if (e.target.closest('[data-t]')) { if (chosen.has(id)) chosen.delete(id); else chosen.set(id, 1); }
+      else return;
+      r.outerHTML = row(food(id)); upd();
+    });
+    ok.onclick = () => { const out = [...chosen.entries()].map(([id, qty]) => [food(id), qty]).filter((x) => x[0]); if (!out.length) return; s.close(); onDone(out); };
+    s.el.querySelector('[data-new]').onclick = () => { editFood(null, (f) => { chosen.set(f.id, 1); draw(); }, meal); };
+  }
   function askQty(f, onPick) {
     UI.formSheet({ title: f.name, intro: `<p class="small muted">هر واحد: ${U.esc(f.serving)} = ${U.num(f.kcal)} کالری</p>`,
       fields: [{ k: 'qty', label: 'تعداد واحد', type: 'chips', opts: [['0.5', '½'], ['1', '۱'], ['1.5', '۱½'], ['2', '۲'], ['3', '۳']] }, { k: 'custom', label: 'یا مقدار دلخواه', type: 'num', ph: 'مثلاً ۲٫۵', unit: f.serving }],
       vals: { qty: '1' }, save: 'افزودن',
       onSave: (v) => { const q = v.custom && v.custom > 0 ? v.custom : +v.qty || 1; onPick(f, q); } });
   }
-  function editFood(f, then) {
+  function editFood(f, then, meal) {
     const isNew = !f;
-    f = f || { id: 'u:' + U.uid(), name: '', cat: 'غذای اصلی', serving: '۱ پرس', g: null, kcal: null, p: 0, c: 0, f: 0, ing: [] };
+    f = f || { id: 'u:' + U.uid(), name: '', cat: 'غذای اصلی', serving: '۱ پرس', g: null, kcal: null, p: 0, c: 0, f: 0, ing: [], meals: meal || 'ld' };
     UI.formSheet({ title: isNew ? 'غذای جدید' : 'ویرایش غذا',
       fields: [{ k: 'name', label: 'نام غذا', req: true }, { k: 'cat', label: 'دسته', type: 'select', opts: FOOD_CATS.map((c) => [c, c]) }, { k: 'serving', label: 'واحد', ph: '۱ پرس / ۱ کاسه / ۱۰۰ گرم', half: true }, { k: 'kcal', label: 'کالری هر واحد', type: 'num', req: true, half: true },
-        { k: 'p', label: 'پروتئین (گرم)', type: 'num', half: true }, { k: 'c', label: 'کربوهیدرات (گرم)', type: 'num', half: true }, { k: 'f', label: 'چربی (گرم)', type: 'num', half: true }, { k: 'ing', label: 'مواد لازم برای خرید', ph: 'با ویرگول جدا کنید', hint: 'برای ساخت خودکار فهرست خرید از برنامهٔ هفتگی' }],
-      vals: Object.assign({}, f, { ing: (f.ing || []).join('، ') }),
-      onSave: (v) => { Object.assign(f, v, { p: v.p || 0, c: v.c || 0, f: v.f || 0, ing: (v.ing || '').split(/[،,]/).map((x) => x.trim()).filter(Boolean) }); if (isNew) S.foods.push(f); DB.save('foods'); App.refresh(); if (then) setTimeout(() => then(f), 250); },
+        { k: 'p', label: 'پروتئین (گرم)', type: 'num', half: true }, { k: 'c', label: 'کربوهیدرات (گرم)', type: 'num', half: true }, { k: 'f', label: 'چربی (گرم)', type: 'num', half: true }, { k: 'meals', label: 'مناسب برای', type: 'multi', opts: MEALS.map(([k, l]) => [k, l]) }, { k: 'ing', label: 'مواد لازم برای خرید', ph: 'با ویرگول جدا کنید', hint: 'برای ساخت خودکار فهرست خرید از برنامهٔ هفتگی' }],
+      vals: Object.assign({}, f, { ing: (f.ing || []).join('، '), meals: (f.meals || 'blds').split('') }),
+      onSave: (v) => { Object.assign(f, v, { p: v.p || 0, c: v.c || 0, f: v.f || 0, meals: (v.meals || []).join('') || 'blds', ing: (v.ing || '').split(/[،,]/).map((x) => x.trim()).filter(Boolean) }); if (isNew) S.foods.push(f); DB.save('foods'); App.refresh(); if (then) setTimeout(() => then(f), 250); },
       onDelete: isNew ? null : () => { S.foods = S.foods.filter((x) => x.id !== f.id); DB.save('foods'); App.refresh(); } });
   }
   /* ---------- plan ---------- */
@@ -3544,7 +4032,7 @@ const Food = (() => {
       tab: (d) => { tab = d.v; App.refresh(); },
       day: (d) => { day = J.addDays(day || J.today(), +d.v); App.refresh(); },
       water: (d) => { const n = Math.max(0, (S.water[d.d] || 0) + +d.v); S.water[d.d] = n; DB.save('water'); if (+d.v > 0 && n === (S.settings.waterTarget || 8)) App.toast('هدف آب امروز کامل شد'); App.refresh(); },
-      add: (d) => pickFood((f, q) => { logFood(f, q, day || J.today(), d.m); App.refresh(); App.toast(f.name + ' ثبت شد'); }, 'افزودن به ' + mealName(d.m)),
+      add: (d) => pickMany(d.m, (list) => { list.forEach(([f, q]) => logFood(f, q, day || J.today(), d.m)); App.refresh(); App.toast(list.length === 1 ? list[0][0].name + ' ثبت شد' : U.fa(list.length) + ' غذا در ' + mealName(d.m) + ' ثبت شد'); }, 'افزودن به ' + mealName(d.m)),
       editEntry: async (d) => {
         const m = S.meals.find((x) => x.id === d.id);
         const r = await UI.menu(m.name, [{ label: 'تغییر مقدار', icon: 'edit', value: 'q' }, { label: 'حذف از دفتر', icon: 'trash', value: 'x', danger: true }]);
@@ -3553,7 +4041,7 @@ const Food = (() => {
       },
       eatPlan: (d) => { togglePlanned(d.d, d.m); App.refresh(); },
       planWd: (d) => { planWd = +d.v; App.refresh(); },
-      planAdd: (d) => pickFood((f, q) => { S.plan.push({ id: U.uid(), wd: planWd, meal: d.m, foodId: f.id, qty: q }); DB.save('plan'); App.refresh(); }, 'برنامهٔ ' + J.WEEKDAYS[planWd]),
+      planAdd: (d) => pickMany(d.m, (list) => { list.forEach(([f, q]) => S.plan.push({ id: U.uid(), wd: planWd, meal: d.m, foodId: f.id, qty: q })); DB.save('plan'); App.refresh(); }, mealName(d.m) + ' · برنامهٔ ' + J.WEEKDAYS[planWd]),
       planDel: (d) => { S.plan = S.plan.filter((p) => p.id !== d.id); DB.save('plan'); App.refresh(); },
       copyDay: async () => {
         const to = await UI.menu('کپی برنامهٔ ' + J.WEEKDAYS[planWd] + ' به:', J.WEEKDAYS.map((w, i) => ({ label: w, value: String(i) })).filter((x) => +x.value !== planWd));
@@ -3839,11 +4327,12 @@ const Mood = (() => {
     const faces = `<div class="mood-pick" data-faces>${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="${m.mood === v ? 'on' : ''}" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 46)}</button>`).join('')}</div><input type="hidden" name="mood" value="${m.mood || ''}"><p class="small muted" data-flabel style="text-align:center">${m.mood ? MOOD_LABELS[m.mood] : 'حالتان چطور است؟'}</p>`;
     const grat = `<div class="stack" style="gap:6px">${[0, 1, 2].map((i) => `<input name="g${i}" value="${U.esc((m.grat || [])[i] || '')}" placeholder="${['یک چیز خوب امروز…', 'کسی که از او ممنونم…', 'لحظه‌ای که لذت بردم…'][i]}">`).join('')}</div>`;
     UI.formSheet({
-      title: isNew ? 'امروز چطور بودید؟' : 'ویرایش حال',
-      fields: [{ k: 'faces', type: 'html', html: faces }, { k: 'emotions', label: 'احساس‌ها', type: 'multi', opts: S.settings.emotions.map((e) => [e, e]) }, { k: 'acts', label: 'امروز چه کردید؟', type: 'multi', opts: S.settings.moodActs.map((e) => [e, e]) },
-        { k: 'sleep', label: 'خواب دیشب', type: 'num', unit: 'ساعت', half: true }, { k: 'sleepQ', label: 'کیفیت خواب', type: 'range', max: 5, half: true }, { k: 'gr', label: 'سه چیز که بابتش قدردانم', type: 'html', html: grat }, { k: 'note', label: 'یادداشت', type: 'textarea', rows: 3, ph: 'هر چه در ذهنتان است…' }, { k: 'time', label: 'ساعت', type: 'time', half: true }, { k: 'date', label: 'تاریخ', type: 'date', half: true }],
+      title: isNew ? 'شرح حال امروز' : 'ویرایش شرح حال',
+      fields: [{ k: 'faces', type: 'html', html: faces }, { k: 'note', label: 'شرح حال امروز', type: 'textarea', rows: 5, ph: 'امروز چه گذشت؟ هر چه در ذهنت است بنویس…' }, { k: 'emotions', label: 'احساس‌ها', type: 'multi', opts: S.settings.emotions.map((e) => [e, e]) }, { k: 'acts', label: 'امروز چه کردید؟', type: 'multi', opts: S.settings.moodActs.map((e) => [e, e]) },
+        { k: 'sleep', label: 'خواب دیشب', type: 'num', unit: 'ساعت', half: true }, { k: 'sleepQ', label: 'کیفیت خواب', type: 'range', max: 5, half: true }, { k: 'gr', label: 'سه چیز که بابتش قدردانم', type: 'html', html: grat }, { k: 'time', label: 'ساعت', type: 'time', half: true }, { k: 'date', label: 'تاریخ', type: 'date', half: true }],
       vals: m,
       after: (frm) => {
+        setTimeout(() => { const n = frm.querySelector('[name=note]'); if (n && !n.value) n.focus({ preventScroll: true }); }, 260);
         frm.querySelector('[data-faces]').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; frm.querySelector('[name=mood]').value = b.dataset.v; frm.querySelectorAll('[data-faces] button').forEach((x) => x.classList.toggle('on', x === b)); frm.querySelector('[data-flabel]').textContent = MOOD_LABELS[+b.dataset.v]; });
       },
       onSave: (v, frm) => {
@@ -3898,7 +4387,7 @@ const Mood = (() => {
     let body = UI.seg('mood.tab', tab, [['today', 'امروز'], ['history', 'سابقه'], ['insights', 'بینش‌ها']]);
     if (tab === 'today') {
       const ms = S.moods.filter((m) => m.date === today);
-      body += `<div class="card stack" style="text-align:center"><b>${ms.length ? 'یک ثبت دیگر؟' : 'امروز حالتان چطور است؟'}</b><div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 50)}</button>`).join('')}</div><small class="muted">با یک لمس ثبت کنید؛ احساس‌ها، فعالیت‌ها و قدردانی را در ادامه بنویسید.</small></div>`;
+      body += `<div class="card stack" style="text-align:center"><b>${ms.length ? 'یک ثبت دیگر؟' : 'امروز حالتان چطور است؟'}</b><div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 50)}</button>`).join('')}</div><small class="muted">روی یک چهره بزنید تا صفحهٔ شرح حال باز شود.</small></div>`;
       if (ms.length) body += UI.sec('ثبت‌های امروز', `<div class="list">${ms.map(entryRow).join('')}</div>`);
       const grat = S.moods.filter((m) => (m.grat || []).some(Boolean)).sort(U.by((m) => m.date, -1))[0];
       if (grat) body += UI.sec('از دفتر قدردانی', `<div class="card small">${grat.grat.filter(Boolean).map((g) => `<p>• ${U.esc(g)}</p>`).join('')}<p class="muted">${J.rel(grat.date)}</p></div>`);
@@ -3931,7 +4420,7 @@ const Mood = (() => {
     },
     acts: {
       tab: (d) => { tab = d.v; App.refresh(); },
-      quick: (d) => { const m = { id: U.uid(), date: J.today(), time: J.nowHM(), mood: +d.v, emotions: [], acts: autoActs(J.today()), sleep: null, sleepQ: null, grat: ['', '', ''], note: '' }; S.moods.push(m); DB.save('moods'); App.refresh(); App.toast('حال «' + MOOD_LABELS[+d.v] + '» ثبت شد', { label: 'جزئیات', run: () => edit(m) }); },
+      quick: (d) => edit(null, { mood: +d.v }),
       new: (d) => edit(null, d.d ? { date: d.d } : {}),
       edit: (d) => edit(S.moods.find((m) => m.id === d.id)),
     },
@@ -4062,7 +4551,7 @@ const Home = (() => {
     let body = `<section class="day-hero" aria-label="امروز، برای خودت">
       <div class="hero-copy"><span class="hero-eyebrow">یک صفحه برای زندگی تو</span>
       <p class="hero-greeting">${greet()}${S.settings.name ? '، ' + U.esc(S.settings.name) : ''}</p>
-      <h2>امروز، برای خودت.</h2><p class="hero-intro">قرار نیست همه‌چیز بی‌نقص باشد؛<br>از یک قدم کوچک شروع کن.</p>
+      <h2>امروز، برای خودت.</h2><p class="hero-intro">${U.esc(Quotes.today(today))}</p>
       <p class="hero-date">${J.fmt(today,'full')}</p></div>
       <div class="hero-art" aria-hidden="true">${InkScenes.picture('home')}</div>
       <div class="hero-status">${sc.total ? Charts.ring(sc.pct,{size:48,stroke:3,color:'var(--accent)',label:U.fa(sc.pct)+'٪'}) : `<span class="hero-start" aria-hidden="true">${icon('sun',22)}</span>`}
@@ -4124,7 +4613,7 @@ const Settings = (() => {
   function main() {
     const st = S.settings;
     const L = License.lic();
-    let body = `<div class="set-group">${row('users', 'نام', st.name || 'تعیین نشده', icon('chevL', 18), 'data-a="settings.name"')}
+    let body = `<div class="set-group">${row('users', 'حساب کاربری', U.esc(Account.status()), icon('chevL', 18), 'data-a="account.edit"')}
       ${row('sun', 'رنگ و ظاهر', Appearance.current().name + ' · ' + { auto: 'خودکار', light: 'روشن', dark: 'تیره' }[st.theme], icon('chevL', 18), go('settings/appearance'))}
       ${row('message', 'همراه و هوش مصنوعی', st.assistant.mode === 'online' ? 'گفت‌وگوی آنلاین و ابزارهای محلی' : 'ابزارهای محلی؛ بدون نیاز به اینترنت', icon('chevL',18),go('settings/assistant'))}
       ${row('cash', 'واحد پول', st.unit === 'rial' ? 'ریال' : 'تومان', icon('chevL', 18), 'data-a="settings.unit"')}</div>`;
@@ -4195,11 +4684,21 @@ const Settings = (() => {
     return { title: 'فهرست‌ها', body: box('areas', 'حوزه‌های زندگی', 'برای دسته‌بندی اهداف') + box('moodActs', 'فعالیت‌ها', 'در ثبت حال روحی') + box('emotions', 'احساس‌ها', 'در ثبت حال روحی') };
   }
   function backup() {
-    const bs = (S.backups || []).slice().reverse();
-    let body = `<div class="notice info">${icon('info', 18)}<div class="small">هر روز با اولین باز کردن برنامه، یک پشتیبان خودکار روی همین گوشی ساخته می‌شود (${U.fa(Backup.KEEP)} روز آخر نگه داشته می‌شود). این پشتیبان جلوی خراب شدن داده را می‌گیرد، اما اگر گوشی گم شود از بین می‌رود؛ برای اطمینان گاهی «فایل پشتیبان» بگیرید و جای دیگری نگه دارید.</div></div>`;
-    body += UI.sec('پشتیبان‌های خودکار روی گوشی', bs.length ? `<div class="list">${bs.map((b) => `<div class="li"><span class="li-ic" style="--c:var(--accent)">${icon('folder')}</span><div class="li-t"><b>${J.fmt(b.date, 'wd')}</b><small>${U.num(Math.round(b.size / 1024))} کیلوبایت</small></div><button class="btn sm ghost" data-a="settings.restoreAuto" data-d="${b.date}">بازگردانی</button></div>`).join('')}</div>` : '<p class="small muted">هنوز پشتیبانی ساخته نشده.</p>');
-    body += UI.sec('فایل پشتیبان', `<div class="stack"><button class="btn primary" data-a="settings.export">${icon('download', 18)} ساخت فایل پشتیبان</button><label class="btn ghost" for="importFile">${icon('upload', 18)} بازگردانی از فایل</label><input type="file" id="importFile" accept=".json,application/json" hidden data-ch="settings.import"><button class="btn ghost" data-a="settings.copyJson">${icon('copy', 18)} کپی متن پشتیبان</button></div>`);
-    return { title: 'پشتیبان‌گیری', body };
+    const bs = (S.backups || []).slice().sort((a, b) => b.at - a.at);
+    const when = (b) => `${J.fmt(b.date, 'wd')} · ${U.fa(new Date(b.at).toTimeString().slice(0, 5))}`;
+    let body = `<div class="notice info">${icon('info', 18)}<div class="small">پشتیبان‌ها داخل خود برنامه نگه داشته می‌شوند. هر روز یک پشتیبان خودکار ساخته می‌شود (${U.fa(Backup.KEEP)} روز آخر) و با دکمهٔ زیر هر وقت خواستید یک پشتیبان دستی می‌سازید (${U.fa(Backup.KEEP_MANUAL)} تای آخر).${Platform.backupFiles.available ? ' یک نسخه هم در پوشهٔ <b dir="ltr">Documents/Khodnegar</b> گوشی ذخیره می‌شود.' : ''}</div></div>`;
+    body += `<button class="btn primary block" data-a="settings.saveNow">${icon('download', 18)} ذخیرهٔ پشتیبان همین حالا</button>`;
+    body += UI.sec('پشتیبان‌های داخل برنامه', bs.length ? `<div class="list">${bs.map((b) => `<div class="li"><span class="li-ic" style="--c:var(--accent)">${icon(b.manual ? 'download' : 'clock')}</span><div class="li-t"><b>${when(b)}</b><small><span>${b.manual ? 'دستی' : 'خودکار'}</span><span>${U.num(Math.round(b.size / 1024))} کیلوبایت</span></small></div><button class="btn sm ghost" data-a="settings.restoreAuto" data-at="${b.at}">بازگردانی</button>${b.manual ? `<button class="icon-btn" data-a="settings.delBackup" data-at="${b.at}" aria-label="حذف">${icon('trash', 16)}</button>` : ''}</div>`).join('')}</div>` : '<p class="small muted">هنوز پشتیبانی ساخته نشده.</p>');
+    if (Platform.backupFiles.available) body += UI.sec('پوشهٔ خودنگار در گوشی', `<div data-bfiles><p class="small muted">در حال خواندن…</p></div><p class="small muted">این فایل‌ها حتی اگر برنامه پاک شود در پوشهٔ Documents/Khodnegar گوشی می‌مانند.</p>`);
+    body += UI.sec('انتقال به گوشی دیگر', `<div class="stack"><button class="btn ghost" data-a="settings.export">${icon('upload', 18)} ارسال فایل پشتیبان (تلگرام، ایمیل…)</button><label class="btn ghost" for="importFile">${icon('folder', 18)} بازگردانی از فایل</label><input type="file" id="importFile" accept=".json,application/json" hidden data-ch="settings.import"><button class="btn ghost" data-a="settings.copyJson">${icon('copy', 18)} کپی متن پشتیبان</button></div>`);
+    const mount = (main) => {
+      const box = main.querySelector('[data-bfiles]'); if (!box) return;
+      Platform.backupFiles.list().then((fs) => {
+        fs = (fs || []).sort((a, b) => (b.mtime || 0) - (a.mtime || 0)).slice(0, 15);
+        box.innerHTML = fs.length ? `<div class="list">${fs.map((f) => `<div class="li"><span class="li-ic" style="--c:var(--accent)">${icon('folder')}</span><div class="li-t"><b dir="ltr" style="text-align:right">${U.esc(f.name)}</b><small>${f.size ? U.num(Math.round(f.size / 1024)) + ' کیلوبایت' : ''}</small></div><button class="btn sm ghost" data-a="settings.restoreFile" data-n="${U.esc(f.name)}">بازگردانی</button></div>`).join('')}</div>` : '<p class="small muted">هنوز فایلی در پوشهٔ گوشی نیست.</p>';
+      }).catch(() => { box.innerHTML = '<p class="small muted">پوشهٔ گوشی خوانده نشد.</p>'; });
+    };
+    return { title: 'پشتیبان‌گیری', body, mount };
   }
   async function restoreSnap(snap) {
     if (!(await UI.confirm('همهٔ داده‌های فعلی با این پشتیبان جایگزین می‌شود. ادامه می‌دهید؟', { ok: 'بازگردانی', danger: true }))) return;
@@ -4235,8 +4734,8 @@ const Settings = (() => {
   A('holDel', (d) => { S.settings.customHolidays.splice(+d.i, 1); DB.save('settings'); App.refresh(); });
   A('listAdd', (d) => UI.formSheet({ title: 'افزودن', fields: [{ k: 'v', label: 'عنوان', req: true }], vals: {}, onSave: (v) => { if (!S.settings[d.k].includes(v.v)) S.settings[d.k].push(v.v); DB.save('settings'); App.refresh(); } }));
   A('listDel', (d) => { S.settings[d.k].splice(+d.i, 1); DB.save('settings'); App.refresh(); });
-  A('export', () => UI.formSheet({ title: 'ساخت فایل پشتیبان', intro: '<p class="small muted">اگر رمز بگذارید، فایل رمزگذاری می‌شود (AES-256) و بدون رمز باز نمی‌شود. رمز را فراموش نکنید.</p>', fields: [{ k: 'pass', label: 'رمز فایل (اختیاری)' }], vals: {}, save: 'ساخت فایل',
-    onSave: async (v) => { try { const txt = await Backup.exportText(v.pass); const ok = Platform.saveFile(Backup.fileName(), txt); if (ok) App.toast('فایل پشتیبان ذخیره شد'); else setTimeout(() => UI.sheet({ title: 'متن پشتیبان', body: `<p class="small muted">در این نمای پیش‌نمایش، دانلود فایل ممکن نیست. متن زیر را کپی کنید و در یک فایل یا یادداشت امن نگه دارید.</p><textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea>` }), 250); } catch (e) { App.toast(e.message); return false; } } }));
+  A('export', () => UI.formSheet({ title: 'ارسال فایل پشتیبان', intro: '<p class="small muted">اگر رمز بگذارید، فایل رمزگذاری می‌شود (AES-256) و بدون رمز باز نمی‌شود. رمز را فراموش نکنید.</p>', fields: [{ k: 'pass', label: 'رمز فایل (اختیاری)' }], vals: {}, save: 'ساخت فایل',
+    onSave: async (v) => { try { const txt = await Backup.exportText(v.pass); const ok = Platform.saveFile(Backup.fileName(), txt); if (ok) App.toast('فایل پشتیبان آماده شد'); else setTimeout(() => UI.sheet({ title: 'متن پشتیبان', body: `<p class="small muted">در این نمای پیش‌نمایش، دانلود فایل ممکن نیست. متن زیر را کپی کنید و در یک فایل یا یادداشت امن نگه دارید.</p><textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea>` }), 250); } catch (e) { App.toast(e.message); return false; } } }));
   A('copyJson', async () => { const txt = await Backup.exportText(); try { await navigator.clipboard.writeText(txt); App.toast('متن پشتیبان کپی شد؛ در یک یادداشت امن نگه دارید'); } catch (e) { UI.sheet({ title: 'متن پشتیبان', body: `<textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea><p class="small muted">همهٔ متن را انتخاب و کپی کنید.</p>` }); } });
   A('import', async (d, el) => {
     const f = el.files[0]; if (!f) return;
@@ -4245,7 +4744,10 @@ const Settings = (() => {
     if (o.enc) UI.formSheet({ title: 'رمز فایل پشتیبان', fields: [{ k: 'p', label: 'رمز', req: true }], vals: {}, onSave: async (v) => { try { const snap = await Backup.parse(text, v.p); setTimeout(() => restoreSnap(snap), 250); } catch (e) { App.toast(e.message); return false; } } });
     else restoreSnap(o).catch((e) => App.toast(e.message));
   });
-  A('restoreAuto', (d) => { const b = S.backups.find((x) => x.date === d.d); restoreSnap(JSON.parse(b.json)).catch((e) => App.toast(e.message)); });
+  A('restoreAuto', (d) => { const b = S.backups.find((x) => String(x.at) === String(d.at)) || S.backups.find((x) => x.date === d.d); if (!b) return; restoreSnap(JSON.parse(b.json)).catch((e) => App.toast(e.message)); });
+  A('saveNow', async () => { const r = await Backup.saveNow(); App.refresh(); App.toast(r.file ? 'پشتیبان داخل برنامه و پوشهٔ گوشی ذخیره شد' : 'پشتیبان داخل برنامه ذخیره شد'); });
+  A('delBackup', async (d) => { if (!(await UI.confirm('این پشتیبان حذف شود؟', { ok: 'حذف', danger: true }))) return; S.backups = S.backups.filter((x) => String(x.at) !== String(d.at)); DB.save('backups'); App.refresh(); });
+  A('restoreFile', async (d) => { try { const text = await Platform.backupFiles.read(d.n); if (!text) { App.toast('فایل خوانده نشد'); return; } const o = JSON.parse(text); if (o.enc) UI.formSheet({ title: 'رمز فایل پشتیبان', fields: [{ k: 'p', label: 'رمز', req: true }], vals: {}, onSave: async (v) => { try { const snap = await Backup.parse(text, v.p); setTimeout(() => restoreSnap(snap), 250); } catch (e) { App.toast(e.message); return false; } } }); else await restoreSnap(o); } catch (e) { App.toast('فایل پشتیبان خوانا نیست'); } });
   A('activate', () => UI.formSheet({ title: 'ورود کد فعال‌سازی', intro: `<p class="small muted">شناسهٔ این گوشی: <b style="direction:ltr;display:inline-block">${License.lic().id}</b><br>این شناسه را برای فروشنده بفرستید تا کد مخصوص این گوشی را بدهد.</p>`, fields: [{ k: 'code', label: 'کد', req: true, ph: 'XXXXX-XXXXX' }], vals: {}, save: 'فعال‌سازی',
     onSave: async (v) => { if (await License.activate(v.code)) { App.toast('فعال شد. ممنون!'); App.refresh(); } else { App.toast('کد درست نیست'); return false; } } }));
   A('demo', async () => { if (await UI.confirm('داده‌های نمونه اضافه شود؟ بعداً با یک دکمه پاک می‌شوند.', { ok: 'افزودن' })) { Demo.load(); App.setTab('home'); App.toast('داده‌های نمونه اضافه شد'); } });
@@ -4511,18 +5013,19 @@ const Notify = (() => {
     const now = Date.now(); const today = J.today();
     const since = S.settings.onboardAt || 0;
     const due = [];
+    const nativeN = !!(Platform.notify && Platform.notify.native); /* Android: the phone already showed it */
     planned(today).forEach((nf) => {
       if (S.notiflog[nf.key]) return;
       if (now < nf.when) return;
       if (now - nf.when > 90 * 60000 || nf.when < since) { S.notiflog[nf.key] = now; return; }
       if (nf.skip && nf.skip()) { S.notiflog[nf.key] = now; return; }
-      S.notiflog[nf.key] = now; due.push(nf);
+      S.notiflog[nf.key] = now; if (!nativeN) due.push(nf);
     });
     const room = Math.max(0, 2 - document.querySelectorAll('#banners .banner').length);
     due.slice(0, room).forEach(show);
     if (due.length > room) showMore(due.slice(room));
     const sn = S.snoozes.filter((s) => s.at <= now);
-    if (sn.length) { S.snoozes = S.snoozes.filter((s) => s.at > now); sn.forEach((s) => show(s.nf)); DB.save('snoozes'); }
+    if (sn.length) { S.snoozes = S.snoozes.filter((s) => s.at > now); if (!nativeN) sn.forEach((s) => show(s.nf)); DB.save('snoozes'); }
     const old = now - 4 * 86400000; Object.keys(S.notiflog).forEach((k) => { if (S.notiflog[k] < old) delete S.notiflog[k]; });
     DB.save('notiflog');
   }
@@ -4538,17 +5041,35 @@ const Notify = (() => {
 /* ================= Backup ================= */
 const Backup = (() => {
   const KEEP = 7;
+  const KEEP_MANUAL = 10;
+  function trim() {
+    const autos = S.backups.filter((b) => !b.manual), mans = S.backups.filter((b) => b.manual);
+    while (autos.length > KEEP) autos.shift();
+    while (mans.length > KEEP_MANUAL) mans.shift();
+    S.backups = autos.concat(mans).sort((a, b) => a.at - b.at);
+  }
   function auto() {
     if (!S.settings.onboarded) return;
     const t = J.today();
     if (S.settings.lastBackup === t) return;
     const snap = DB.snapshot();
-    S.backups = (S.backups || []).filter((b) => b.date !== t);
+    S.backups = (S.backups || []).filter((b) => b.manual || b.date !== t);
     S.backups.push({ date: t, at: Date.now(), size: 0, json: JSON.stringify(snap) });
     S.backups.forEach((b) => { b.size = b.json.length; });
-    while (S.backups.length > KEEP) S.backups.shift();
+    trim();
     S.settings.lastBackup = t;
     DB.save('backups', 'settings');
+  }
+  /* one tap: a backup kept inside the app (+ a file in Documents/Khodnegar on Android, without any share sheet) */
+  async function saveNow() {
+    const json = JSON.stringify(DB.snapshot());
+    const b = { date: J.today(), at: Date.now(), size: json.length, json, manual: true };
+    S.backups = S.backups || []; S.backups.push(b); trim();
+    S.settings.lastManualBackup = b.at;
+    DB.save('backups', 'settings');
+    let file = false;
+    if (Platform.backupFiles.available) { try { file = await Platform.backupFiles.save(fileName(true), json); } catch (e) { file = false; } }
+    return { b, file };
   }
   const b64 = (buf) => { const bytes=new Uint8Array(buf);let s='';for(let i=0;i<bytes.length;i+=32768)s+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(s); };
   const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
@@ -4574,8 +5095,8 @@ const Backup = (() => {
     }
     return o;
   }
-  const fileName = () => `khodnegar-backup-${U.en(J.fmt(J.today(), 'num')).replace(/\//g, '-')}.json`;
-  return { auto, exportText, parse, fileName, KEEP };
+  const fileName = (withTime) => `khodnegar-backup-${U.en(J.fmt(J.today(), 'num')).replace(/\//g, '-')}${withTime ? '-' + U.en(J.nowHM()).replace(':', '') : ''}.json`;
+  return { auto, saveNow, exportText, parse, fileName, KEEP, KEEP_MANUAL };
 })();
 
 /* ================= Lock (PIN) ================= */
@@ -4708,23 +5229,24 @@ const License = (() => {
 const Onboard = (() => {
   function show() {
     let step = 0, name = S.settings.name || '', persona = 'employee', mods = null, unit = 'toman', demo = false;
+    let reg = Object.assign({}, S.settings.account || {});
     const el = document.createElement('div'); el.className = 'onb';
     document.body.appendChild(el);
     const P = Defaults.PERSONAS;
     const draw = () => {
       if (!mods) mods = MODULE_ORDER.filter((m) => !P[persona].off.includes(m));
       let h = `<div class="onb-in"><div class="steps-dots">${[0, 1, 2, 3].map((i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>`;
-      if (step === 0) h += `<div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><div class="onb-art" aria-hidden="true">${InkScenes.picture('home')}</div><h1>دفتر زندگی تو، به خط خودت</h1><p class="lead">کارها، اهداف و عادت‌ها، تقویم شمسی، مالی، غذا، ورزش و حال روحی؛ همه کنار هم و روی همین دستگاه.</p><div class="fld"><label for="onbName">اسم شما (برای خوش‌آمدگویی)</label><input id="onbName" value="${U.esc(name)}" placeholder="مثلاً بنیامین" autocomplete="given-name"></div>`;
+      if (step === 0) h += `<div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><div class="onb-art" aria-hidden="true">${InkScenes.picture('home')}</div><h1>دفتر زندگی تو، به خط خودت</h1><p class="lead">کارها، اهداف و عادت‌ها، تقویم شمسی، مالی، غذا، ورزش و حال روحی؛ همه کنار هم و روی همین دستگاه.</p><h2 style="font-size:17px;margin:0">ثبت‌نام</h2><div class="stack" data-reg>${Account.fieldsHtml(reg)}</div>`;
       if (step === 1) h += `<h1>بیشتر به کدام نزدیک‌ترید؟</h1><p class="lead">بخش‌ها و چند هدف و عادت نمونه را برایتان آماده می‌کنیم. بعداً همه‌چیز قابل تغییر است.</p><div class="persona-grid">${Object.entries(P).map(([k, p]) => `<button class="persona ${k === persona ? 'on' : ''}" data-p="${k}">${icon(p.icon, 22)}<b>${p.label}</b><small>${p.desc}</small></button>`).join('')}</div>`;
       if (step === 2) h += `<h1>کدام بخش‌ها را می‌خواهید؟</h1><p class="lead">بخش‌های خاموش در برنامه دیده نمی‌شوند. هر وقت خواستید از تنظیمات روشنشان کنید.</p><div class="set-group">${MODULE_ORDER.map((id) => { const m = App.mods[id]; return `<label class="set-row"><span class="li-ic" style="--c:${m.c}">${icon(m.icon)}</span><div class="grow"><b>${m.title}</b><small>${m.desc}</small></div><span class="switch"><input type="checkbox" data-m="${id}" ${mods.includes(id) ? 'checked' : ''} ${id === 'tasks' ? 'disabled' : ''}><span></span></span></label>`; }).join('')}</div>`;
       if (step === 3) h += `<h1>آخرین قدم</h1><div class="fld"><label>مبالغ به چه واحدی نمایش داده شوند؟</label><div class="chips"><label class="chip-r"><input type="radio" name="onbU" value="toman" ${unit === 'toman' ? 'checked' : ''}><span>تومان</span></label><label class="chip-r"><input type="radio" name="onbU" value="rial" ${unit === 'rial' ? 'checked' : ''}><span>ریال</span></label></div></div>
         <label class="set-group set-row" style="padding:12px 14px"><div class="grow"><b>با داده‌های نمونه شروع کن</b><small>برای آشنایی با برنامه، چند کار، تراکنش، تمرین و ثبت حال نمونه ساخته می‌شود. بعداً از تنظیمات پاک می‌شوند.</small></div><span class="switch"><input type="checkbox" id="onbDemo" ${demo ? 'checked' : ''}><span></span></span></label>
-        <div class="notice info">${icon('lock', 18)}<div class="small">همهٔ داده‌ها فقط روی همین گوشی ذخیره می‌شود و هر روز یک پشتیبان خودکار ساخته می‌شود. دورهٔ آزمایشی: ${U.fa(License.TRIAL_DAYS)} روز.</div></div>`;
+        <div class="notice info">${icon('lock', 18)}<div class="small">داده‌های برنامه فقط روی همین گوشی ذخیره می‌شود و هر روز یک پشتیبان خودکار داخل برنامه ساخته می‌شود. دورهٔ آزمایشی: ${U.fa(License.TRIAL_DAYS)} روز.</div></div>`;
       h += `<div class="row"><button class="btn ghost" data-back ${step === 0 ? 'hidden' : ''}>قبلی</button><button class="btn primary grow" data-next>${step === 3 ? 'شروع' : 'ادامه'}</button></div></div>`;
       el.innerHTML = h;
     };
     const collect = () => {
-      const n = el.querySelector('#onbName'); if (n) name = n.value.trim();
+      const rb = el.querySelector('[data-reg]'); if (rb) ['first', 'last', 'mobile', 'email'].forEach((k) => { const i = rb.querySelector('#reg_' + k); if (i) reg[k] = i.value; });
       const ms = el.querySelectorAll('[data-m]'); if (ms.length) mods = [...ms].filter((x) => x.checked || x.dataset.m === 'tasks').map((x) => x.dataset.m);
       const u = el.querySelector('[name=onbU]:checked'); if (u) unit = u.value;
       const d = el.querySelector('#onbDemo'); if (d) demo = d.checked;
@@ -4733,9 +5255,11 @@ const Onboard = (() => {
       const p = e.target.closest('[data-p]'); if (p) { persona = p.dataset.p; mods = null; draw(); return; }
       if (e.target.closest('[data-back]')) { collect(); step--; draw(); return; }
       if (e.target.closest('[data-next]')) {
-        collect();
-        if (step < 3) { step++; draw(); return; }
+        if (step === 0) { collect(); const v = Account.readForm(el.querySelector('[data-reg]')); if (!v) return; reg = v; name = v.first; }
+        else collect();
+        if (step < 3) { step++; draw(); el.scrollTop = 0; return; }
         S.settings.name = name; S.settings.unit = unit;
+        if (reg.first) Account.store({ first: reg.first, last: reg.last, mobile: reg.mobile, email: reg.email });
         Defaults.applyPersona(persona, mods);
         S.settings.onboarded = true; S.settings.created = J.today(); S.settings.onboardAt = Date.now();
         License.lic();
@@ -5186,6 +5710,477 @@ const Guide=(()=>{
  App.act('guide.finish',()=>{S.settings.guideCompleted=true;DB.save('settings');App.replace('settings');App.toast('راهنما تمام شد؛ هر وقت بخواهی می‌توانی دوباره مرور کنی.');});
  App.act('guide.exit',()=>App.replace('settings'));
  return {invite,open};
+})();
+
+/* ---- js/core/v02.js (v0.2.0) ---- */
+/* Khodnegar — daily sentences bank, number fitting, user registration (sent to the Bonyan Soft site later) */
+
+/* ================= Numbers that always fit their box =================
+ * Big amounts (e.g. ۳۵۰,۰۰۰,۰۰۰) shrink their font until they fit; nothing is cut or overlaps. */
+function fitNums(root) {
+  (root || document).querySelectorAll('.stat b, .mcard .big, [data-fit]').forEach((el) => {
+    el.style.fontSize = '';
+    if (el.scrollWidth <= el.clientWidth + 1) return;
+    let fs = parseFloat(getComputedStyle(el).fontSize) || 17, n = 0;
+    while (el.scrollWidth > el.clientWidth + 1 && fs > 9 && n++ < 30) { fs -= 0.5; el.style.fontSize = fs + 'px'; }
+  });
+}
+window.addEventListener('resize', () => { clearTimeout(fitNums._t); fitNums._t = setTimeout(() => fitNums(document), 150); });
+
+/* ================= Daily sentence ================= */
+const QUOTES = [
+  "لازم نیست امروز همه‌چیز را درست کنی؛ فقط یک قدم کوچک بردار.",
+  "آرام رفتن هم رفتن است؛ مهم این است که بایستی نه.",
+  "کار کوچکی که انجام شده، از نقشهٔ بزرگی که در ذهن مانده بهتر است.",
+  "امروز را با یک کار ساده شروع کن تا ذهنت گرم شود.",
+  "هر روز کمی بهتر از دیروز، یعنی یک سال بعد آدم دیگری هستی.",
+  "خودت را با دیگران مقایسه نکن؛ با دیروزِ خودت مقایسه کن.",
+  "وقتی خسته‌ای، استراحت کن؛ رها نکن.",
+  "نظم یعنی کاری را انجام بدهی حتی وقتی حوصله‌اش را نداری.",
+  "ده دقیقه شروع کن؛ بیشتر وقت‌ها ادامه‌اش خودش می‌آید.",
+  "امروز مهربان‌ترین صدا در ذهنت، صدای خودت باشد.",
+  "چیزی که اندازه‌اش را می‌گیری، بهتر مراقبش هستی.",
+  "هر قدم کوچک، رأیی است به آدمی که می‌خواهی باشی.",
+  "اول مهم‌ترین کار؛ بقیه منتظر می‌مانند.",
+  "یک کار را تمام کن، بعد سراغ بعدی برو.",
+  "اشتباه دیروز، درس امروز است؛ نه بار امروز.",
+  "آرامش هم بخشی از برنامه است، نه وقت تلف‌شده.",
+  "سخت‌ترین قسمت هر کار، همان شروعش است.",
+  "امروز یک چیز را از فهرستت خط بزن و به خودت آفرین بگو.",
+  "لازم نیست حالت عالی باشد تا شروع کنی؛ شروع کن تا حالت بهتر شود.",
+  "پول‌ات را بنویس تا بدانی کجا می‌رود.",
+  "یک لیوان آب، یک نفس عمیق، یک قدم بعدی.",
+  "امروز را دست‌کم نگیر؛ همین روزهای معمولی زندگی را می‌سازند.",
+  "وقتی برنامه داری، روز تو را نمی‌برد؛ تو روز را می‌بری.",
+  "خوب کافی است؛ بی‌نقص بودن را بگذار برای بعد.",
+  "کمی صبر؛ بذرها هم یک‌شبه سبز نمی‌شوند.",
+  "از خودت بپرس: امروز چه چیزی واقعاً مهم است؟",
+  "هر روز که ثبت می‌کنی، خودت را بهتر می‌شناسی.",
+  "به جای «باید»، بگو «می‌خواهم» و ببین چه تغییر می‌کند.",
+  "خستگی یعنی تلاش کرده‌ای؛ به خودت اجازهٔ استراحت بده.",
+  "کارهای بزرگ از تکرار کارهای کوچک ساخته می‌شوند.",
+  "امروز برای کسی وقت بگذار که برایت مهم است.",
+  "گوشی را کنار بگذار و چند دقیقه فقط نفس بکش.",
+  "آهسته و پیوسته، از تند و گاه‌به‌گاه جلوتر می‌رسد.",
+  "هر خرج کوچک، در جمع ماه بزرگ می‌شود.",
+  "اگر امروز سخت گذشت، فردا دوباره شروع کن؛ این هم بخشی از راه است.",
+  "یک قدم جلوتر از دیروز، یعنی پیروزی امروز.",
+  "بدنت خانهٔ توست؛ با تکان دادنش از آن مراقبت کن.",
+  "تمرکز یعنی «نه» گفتن به صدها چیز خوب دیگر.",
+  "امروز سه چیز پیدا کن که بابتش ممنونی.",
+  "کار را به بخش‌های کوچک تقسیم کن تا ترسناک نباشد.",
+  "برای فردا امشب برنامه بریز؛ صبح سبک‌تر بیدار می‌شوی.",
+  "موفقیت معمولاً بی‌سروصدا و با تکرار ساخته می‌شود.",
+  "گاهی بهترین کار، کمی آهسته‌تر رفتن است.",
+  "ذهنت را روی کاغذ خالی کن تا جا برای فکر تازه باز شود.",
+  "عادت خوب را آن‌قدر کوچک کن که نتوانی نه بگویی.",
+  "امروز یک تصمیم کوچک برای سلامتی‌ات بگیر.",
+  "مهربانی با دیگران از مهربانی با خودت شروع می‌شود.",
+  "هر چیزی که امروز یاد بگیری، فردا سرمایهٔ توست.",
+  "از کارهای ناتمام نترس؛ فقط یکی را انتخاب کن و جلو ببر.",
+  "برنامه‌ریزی یعنی زندگی را به خواست خودت جلو ببری.",
+  "لبخند بزن؛ هنوز وقت برای ساختن امروز داری.",
+  "پیشرفت را ببین، نه فقط فاصله تا هدف را.",
+  "یک روز بد، یعنی یک روز؛ نه یک زندگی.",
+  "بیست دقیقه پیاده‌روی، ذهن را بیشتر از یک ساعت نگرانی آرام می‌کند.",
+  "اول پس‌انداز کن، بعد خرج؛ نه برعکس.",
+  "خوابِ کافی، راز پنهانِ روزهای خوب است.",
+  "کمتر ولی بهتر؛ این شعار امروز باشد.",
+  "آنچه را نمی‌توانی تغییر دهی رها کن و روی بقیه تمرکز کن.",
+  "هر شروع دوباره، شجاعت می‌خواهد؛ تو این شجاعت را داری.",
+  "امروز یک کار را فقط برای دل خودت انجام بده.",
+  "زمان را نمی‌شود نگه داشت، ولی می‌شود خوب خرجش کرد.",
+  "فهرست کوتاه، روز آرام.",
+  "اگر انگیزه نداری، به عادت تکیه کن.",
+  "یک «نه» به موقع، یک ساعت وقت آزاد می‌سازد.",
+  "قدم‌های کوچک امروز، فاصله‌های بزرگ فردا را کم می‌کنند.",
+  "از کاری که انجام داده‌ای لذت ببر، قبل از اینکه سراغ بعدی بروی.",
+  "گذشته را تغییر نمی‌دهی، ولی امروز کاملاً در دست توست.",
+  "آرام باش؛ هر کاری وقت خودش را دارد.",
+  "هر روز یک صفحه بخوان؛ آخر سال یک کتاب خوانده‌ای.",
+  "تلاش امروزت را دست‌کم نگیر؛ نتیجه‌اش دیرتر پیدا می‌شود.",
+  "برای خودت هم قرار ملاقات بگذار.",
+  "ذهنِ مرتب، از میزِ مرتب شروع می‌شود.",
+  "اگر کاری کمتر از دو دقیقه طول می‌کشد، همین حالا انجامش بده.",
+  "خودت را به خاطر استراحت سرزنش نکن.",
+  "حال بد هم می‌گذرد؛ فقط مراقب خودت باش تا بگذرد.",
+  "به جای کامل کردن، شروع کردن را تمرین کن.",
+  "یک کار را با تمام حواس انجام بده؛ همین کافی است.",
+  "پیش از خرید بپرس: واقعاً لازمش دارم؟",
+  "امروز یک نفر را با یک پیام کوتاه خوشحال کن.",
+  "پیروزی‌های کوچک را جشن بگیر؛ آن‌ها سوخت راه‌اند.",
+  "امروز را همان‌طور بساز که دوست داری به یادش بیاوری.",
+  "سلامتی را قرض نگیر که بعداً پس بدهی؛ همین امروز مراقبش باش.",
+  "انرژی‌ات را برای چیزهایی بگذار که واقعاً برایت مهم‌اند.",
+  "هیچ‌کس همه‌چیز را با هم درست نمی‌کند؛ تو هم لازم نیست.",
+  "وقتی نمی‌دانی از کجا شروع کنی، از ساده‌ترین شروع کن.",
+  "دیروز تمام شد؛ امروز صفحهٔ سفید توست.",
+  "برای هدفت هر روز یک کار کوچک انجام بده، حتی اگر فقط پنج دقیقه باشد.",
+  "هر بار که به قولت به خودت عمل می‌کنی، اعتمادت به خودت بیشتر می‌شود.",
+  "ثبت کردن هزینه‌ها، اولین قدم آزادی مالی است.",
+  "سکوت چند دقیقه‌ای، صدای درونت را بلندتر می‌کند.",
+  "وقت گذاشتن برای خانواده، هیچ‌وقت وقت تلف کردن نیست.",
+  "امروز کمتر غر بزن و بیشتر قدردانی کن.",
+  "یک برنامهٔ ساده که اجرا شود، بهتر از برنامهٔ کاملی است که اجرا نشود.",
+  "همیشه یک قدم کوچک‌تر هم وجود دارد که بتوانی برداری.",
+  "تغییر یعنی هر روز همان کار کوچک را تکرار کردن.",
+  "از سؤال کردن نترس؛ یاد گرفتن از همین‌جا شروع می‌شود.",
+  "امروز به بدنت آب، به ذهنت آرامش و به قلبت امید بده.",
+  "وقتی کاری را می‌پذیری، تمامش کن؛ وقتی نمی‌توانی، صادقانه بگو.",
+  "بهترین زمان برای شروع، دیروز بود؛ زمان بعدی، همین حالاست.",
+  "یک کار نیمه‌تمام را امروز به پایان برسان.",
+  "مرتب کردن یک گوشهٔ کوچک، حس مرتب بودن بزرگی می‌دهد.",
+  "شادی را در چیزهای کوچک پیدا کن: یک چای گرم، یک آسمان صاف.",
+  "برای هر چیز جایی، و هر چیز در جای خودش.",
+  "امروز را با نوشتن سه کار اصلی شروع کن.",
+  "هرچه برنامه‌ات ساده‌تر، پایبندی به آن آسان‌تر.",
+  "به حرف بدنت گوش کن؛ او خسته شدن را زودتر از تو می‌فهمد.",
+  "هیچ پیشرفتی کوچک نیست.",
+  "یک ساعت بدون گوشی، هدیه‌ای به ذهن خودت است.",
+  "آدم‌های موفق هم روزهای بد دارند؛ فقط فردایش دوباره شروع می‌کنند.",
+  "بگذار کارهایت حرف بزنند، نه نگرانی‌هایت.",
+  "کمی جلوتر از ترس‌ات قدم بردار.",
+  "امروز چیزی را تمام کن که مدت‌هاست عقب انداخته‌ای.",
+  "آرامش را در برنامه‌ات جا بده، نه در حاشیه‌اش.",
+  "پول خوب خرج‌شده، آرامش می‌خرد.",
+  "هر شب از خودت بپرس: امروز چه چیزی خوب پیش رفت؟",
+  "خودت را همان‌قدر تشویق کن که دوستت را تشویق می‌کنی.",
+  "گام اول را بردار؛ لازم نیست کل پله‌ها را ببینی.",
+  "وقتی همه‌چیز شلوغ است، فقط کار بعدی را ببین.",
+  "امروز یک عادت بد را فقط برای یک روز کنار بگذار.",
+  "تلاش منظم، استعداد بی‌برنامه را جا می‌گذارد.",
+  "برای هر هدف یک «چرا» داشته باش؛ در روزهای سخت به کارت می‌آید.",
+  "کمی بخند؛ حتی به اشتباه‌های خودت.",
+  "امروز چیزی یاد بگیر که دیروز نمی‌دانستی.",
+  "وقتِ غذا، فقط غذا بخور؛ آهسته و با لذت.",
+  "حواست به حرف‌هایی که به خودت می‌زنی باشد.",
+  "یک مسیر را انتخاب کن و مدتی در آن بمان.",
+  "هیچ‌وقت برای شروع یک عادت خوب دیر نیست.",
+  "زندگی ساده‌تر، ذهن آرام‌تر.",
+  "هر روز کمی پس‌انداز، یعنی روزی خیالِ راحت.",
+  "به جای حسرت خوردن، برنامه بریز.",
+  "امروز با خودت مهربان باش؛ کارهای زیادی کرده‌ای.",
+  "خوب گوش دادن، بهترین هدیه به آدم‌های اطرافت است.",
+  "وقتی گیر کرده‌ای، کمی قدم بزن؛ جواب‌ها در راه پیدا می‌شوند.",
+  "دلیل‌هایت را بنویس؛ بهانه‌ها خودشان کم می‌شوند.",
+  "یک کار را امروز بهتر از دفعهٔ قبل انجام بده.",
+  "ثبات، از هیجان ماندگارتر است.",
+  "امروز برای آیندهٔ خودت یک لطف کوچک انجام بده.",
+  "نترس از آهسته رفتن؛ بترس از ایستادن.",
+  "آب بنوش، کمی راه برو، زود بخواب؛ نصف حال خوب همین‌هاست.",
+  "به خودت فرصت بده؛ یاد گرفتن زمان می‌برد.",
+  "روز شلوغ را با یک فنجان چای و یک نفس عمیق شروع کن.",
+  "کارِ امروز را به فردا نینداز؛ فردا کارهای خودش را دارد.",
+  "اگر نمی‌توانی همه را انجام دهی، مهم‌ترین را انجام بده.",
+  "خرجِ امروز، تصمیمِ امروز است؛ آگاهانه انتخاب کن.",
+  "یک دوست خوب، داروی خیلی از حال‌های بد است.",
+  "هر بار زمین خوردی، یک چیز تازه یاد گرفته‌ای.",
+  "زندگی مسابقه نیست؛ سفر است.",
+  "امروز را با یک کار خوب برای کسی تمام کن.",
+  "کار خوب را بی‌سروصدا انجام بده.",
+  "اول خودت را آرام کن، بعد تصمیم بگیر.",
+  "تکرار، معلم بزرگی است.",
+  "هدف بدون برنامه، فقط یک آرزوست.",
+  "امروز ده دقیقه برای چیزی بگذار که دوستش داری.",
+  "اگر خسته‌ای، کار را کوچک‌تر کن؛ نه اینکه کنارش بگذاری.",
+  "ساعت خوابت را جدی بگیر؛ فردا از آن شروع می‌شود.",
+  "یک صفحه نوشتن، ذهن را سبک می‌کند.",
+  "قدردانی، چیزهایی را که داری بیشتر می‌کند.",
+  "هیچ کاری را با عجله شروع نکن که بعداً با حسرت تمامش کنی.",
+  "وقت آزادت را هم برنامه‌ریزی کن تا گم نشود.",
+  "صبور باش؛ نتیجهٔ خوب دیر می‌رسد ولی می‌ماند.",
+  "یک کار کوچک برای سلامت، هر روز.",
+  "انتخاب‌های کوچک امروز، زندگی بزرگ فردا را می‌سازند.",
+  "امروز کمتر وعده بده و بیشتر عمل کن.",
+  "اگر کاری را دوست نداری، زودتر انجامش بده تا از ذهنت بیرون برود.",
+  "خانهٔ مرتب، فکر مرتب.",
+  "امروز یک خرج غیرضروری را کنار بگذار.",
+  "تلاش کن، ولی به خودت سخت نگیر.",
+  "یک لحظه بایست و ببین تا اینجا چقدر آمده‌ای.",
+  "روزهای معمولی را دوست داشته باش؛ بیشتر زندگی همین‌هاست.",
+  "وقتی دلت گرفته، با کسی حرف بزن.",
+  "بدن ورزیده با یک حرکت شروع می‌شود، نه با یک باشگاه.",
+  "هر روز یک قدم، حتی اگر کوتاه.",
+  "کارهایت را بنویس تا ذهنت جای فکر کردن داشته باشد.",
+  "امروز به جای عجله، دقت را انتخاب کن.",
+  "خودت باش؛ بقیه نقش‌ها پر شده‌اند.",
+  "برای آرامش، لازم نیست همه‌چیز کامل باشد.",
+  "یک قول کوچک به خودت بده و همین امروز عمل کن.",
+  "وقتی نمی‌دانی چه کنی، کار درست را انجام بده.",
+  "هر ماه کمی بیشتر از ماه قبل پس‌انداز کن.",
+  "امروز را با یک نیت روشن شروع کن.",
+  "زیاد فکر کردن، جای عمل کردن را نمی‌گیرد.",
+  "شکست یعنی تلاش کرده‌ای؛ تسلیم نشدن یعنی هنوز در راهی.",
+  "امروز را برای خودت هم زندگی کن.",
+  "کار امروز را با لبخند تمام کن.",
+  "یک کار دشوار را صبح انجام بده؛ بقیهٔ روز سبک‌تر است.",
+  "گاهی «کافی است» بهترین جملهٔ روز است.",
+  "مهم نیست چقدر آهسته می‌روی، مهم این است که ادامه بدهی.",
+  "وقتی شکرگزاری، کمبودها کوچک‌تر دیده می‌شوند.",
+  "برای سلامتی‌ات وقت بگذار، وگرنه بیماری وقتت را می‌گیرد.",
+  "یک روز در هفته را به استراحت واقعی بده.",
+  "خرج کردن آسان است؛ آگاهانه خرج کردن هنر است.",
+  "امروز یک نفر را تشویق کن.",
+  "ذهن آرام، تصمیم بهتر می‌گیرد.",
+  "بزرگ فکر کن، کوچک شروع کن.",
+  "دیگران را ببخش؛ این بیشتر از همه به خودت کمک می‌کند.",
+  "وقتی کاری را تمام کردی، تیکش بزن و لذتش را ببر.",
+  "امروز چیزی را رها کن که دیگر به دردت نمی‌خورد.",
+  "هر تلاش صادقانه، جایی ثمر می‌دهد.",
+  "نوشتن هدف، آن را یک قدم به واقعیت نزدیک‌تر می‌کند.",
+  "امروز به جای کامل بودن، حاضر بودن را انتخاب کن.",
+  "کمی ورزش، کمی سکوت، کمی کتاب؛ دستور یک روز خوب.",
+  "با هر نفس، کمی از نگرانی را بیرون بده.",
+  "پیش از خواب، فردا را در سه خط بنویس.",
+  "آدم‌های خوب زندگی‌ات را قدر بدان.",
+  "اولویت یعنی انتخاب؛ امروز درست انتخاب کن.",
+  "برای رسیدن، لازم نیست بدوی؛ فقط باید راه بروی.",
+  "یک کار را عالی انجام بده، نه ده کار را نصفه.",
+  "وقتی حالت خوب است، برای روزهای سخت ذخیره کن.",
+  "امروز را با یک کار مفید برای خانه شروع کن.",
+  "قضاوت نکن؛ بپرس و گوش کن.",
+  "هر صبح فرصت تازه‌ای است تا کمی بهتر باشی.",
+  "هر هزینه را ثبت کن؛ عددها راست می‌گویند.",
+  "آرام صحبت کن، محکم عمل کن.",
+  "کمی زودتر بیدار شو و صبح را برای خودت داشته باش.",
+  "کاری را شروع کن که آیندهٔ تو از آن ممنون باشد.",
+  "امروز را با یک قدم کوچک به سمت هدف بزرگت پر کن.",
+  "وقتی همه‌چیز سخت است، فقط تا فردا دوام بیاور.",
+  "لذت بردن از مسیر، رسیدن را شیرین‌تر می‌کند.",
+  "از امروز، یک عادت بد را با یک عادت خوب عوض کن.",
+  "ثبت حال روزانه، آینهٔ صادق روزهای توست.",
+  "گاهی پیشرفت یعنی همان جایی بمانی و رها نکنی.",
+  "هیچ کاری آن‌قدر بزرگ نیست که نشود به قطعه‌های کوچک تقسیمش کرد.",
+  "امروز به جای «فردا»، بگو «همین حالا».",
+  "خوشبختی اغلب در همین لحظه پنهان است.",
+  "از چیزی که داری مراقبت کن، قبل از آنکه به دنبال بیشتر بروی.",
+  "امروز چند دقیقه برای برنامهٔ هفته بگذار.",
+  "زودتر بخواب، زودتر بیدار شو، سبک‌تر زندگی کن.",
+  "آدمی که منظم است، وقت بیشتری برای شادی دارد.",
+  "خودت را برای هر کار کوچکی که تمام می‌کنی تحسین کن.",
+  "امروز را بدون عجله شروع کن.",
+  "هر چیز خوب، کمی حوصله می‌خواهد.",
+  "برنامه‌ات را با واقعیت روزت هماهنگ کن، نه با آرزوهایت.",
+  "کمی نظم، آزادی زیادی می‌آورد.",
+  "امروز به جای شکایت، راه حل پیدا کن.",
+  "یک لیست کوتاه بنویس و فقط همان را انجام بده.",
+  "پس‌انداز کوچک، رؤیای بزرگ را ممکن می‌کند.",
+  "به قول‌هایت به خودت احترام بگذار.",
+  "تنهایی گاهی فرصتی است برای شناختن خودت.",
+  "اگر امروز نتوانستی، فردا را از دست نده.",
+  "راه رفتن آرام، به شرط ادامه دادن، به مقصد می‌رسد.",
+  "امروز چیزی را تحسین کن که همیشه از کنارش می‌گذری.",
+  "تو بیشتر از آنچه فکر می‌کنی توانایی داری.",
+  "بدنت را حرکت بده تا ذهنت هم حرکت کند.",
+  "کارهای امروز را بنویس تا شب بدانی چه کرده‌ای.",
+  "پیش از هر خرید بزرگ، یک شب صبر کن.",
+  "آدم‌ها را همان‌طور که هستند بپذیر؛ زندگی ساده‌تر می‌شود.",
+  "امروز یک چیز تازه را امتحان کن.",
+  "آرامشت را به خاطر چیزهای کوچک خرج نکن.",
+  "نتیجه‌ها دیر می‌آیند، ولی عادت‌ها هر روز ساخته می‌شوند.",
+  "یک روز خوب از یک صبح آرام شروع می‌شود.",
+  "وقتی از خودت راضی هستی، دیگران را هم راحت‌تر دوست داری.",
+  "امروز را به چیزی بسپار که برایش ارزش قائلی.",
+  "سخت‌کوشی بدون استراحت، دوام ندارد.",
+  "هر روز یک کار برای آینده، یک کار برای امروز.",
+  "شادی را به تعویق نینداز.",
+  "کمتر داشته باش، بهتر زندگی کن.",
+  "هر شب کمی زودتر چراغ‌ها را خاموش کن.",
+  "روی چیزهایی تمرکز کن که در اختیار توست.",
+  "امروز چند جرعه آب بیشتر بنوش.",
+  "خودت را دوست داشته باش، حتی در روزهای نه‌چندان خوب.",
+  "فکرهایت را مرتب کن، کارهایت خودشان مرتب می‌شوند.",
+  "یک تشکر ساده می‌تواند روز کسی را بسازد.",
+  "به جای کار بیشتر، کار درست‌تر.",
+  "روزی را تصور کن که از امروز ممنونی؛ حالا برایش کار کن.",
+  "امروز مرزهایت را مهربانانه نگه دار.",
+  "فردا هم روز است؛ امروز را خراب نکن.",
+  "هر چه ساده‌تر، ماندگارتر.",
+  "در روزهای شلوغ، دست‌کم یک کار برای خودت انجام بده.",
+  "امیدت را نگه دار؛ روزهای خوب در راه‌اند.",
+  "بهترین سرمایه‌گذاری، روی سلامت و دانش خودت است.",
+  "امروز یک قدم به سمت آدمی که می‌خواهی باشی بردار.",
+  "آرام نفس بکش؛ تو از پس امروز برمی‌آیی.",
+  "یک کار را تا آخر ببر؛ لذتش با هیچ چیز عوض نمی‌شود.",
+  "با نوشتن، آینده را طراحی کن.",
+  "گاهی بهترین برنامه، کمی بی‌برنامگی است.",
+  "امروز به چیزی بله بگو که حالت را بهتر می‌کند.",
+  "از هر روز، یک خاطرهٔ خوب نگه دار.",
+  "مراقب کلماتت باش؛ اول خودت آن‌ها را می‌شنوی.",
+  "امروز کار کوچکی برای محیط اطرافت انجام بده.",
+  "وقتی کار زیاد است، شروع کن؛ فکر کردن به آن خسته‌ترت می‌کند.",
+  "از دیروز یاد بگیر، برای فردا برنامه بریز، امروز زندگی کن.",
+  "تو مسئول تلاش هستی، نه همهٔ نتیجه‌ها.",
+  "هر روز یک خط بنویس؛ بعدها گنجی پیدا می‌کنی.",
+  "بخشی از درآمدت مال آیندهٔ توست.",
+  "امروز کمی برای سکوت جا باز کن.",
+  "به روزهای سخت هم اعتماد کن؛ چیزهای زیادی یادت می‌دهند.",
+  "عادت‌ها مثل بهرهٔ پول‌اند؛ کم‌کم جمع می‌شوند.",
+  "پیش از تمام شدن روز، یک کار خوب برای خودت بکن.",
+  "وقتی دلیلت روشن است، راه هم پیدا می‌شود.",
+  "امروز یک ساعت را کاملاً به یک کار بده.",
+  "ساده بگیر، جدی دنبال کن.",
+  "خستگیِ پس از تلاش، شیرین‌ترین خستگی است.",
+  "هر صبح بپرس: امروز چه چیزی را بهتر کنم؟",
+  "مهربانی، کوچک‌ترین کار بزرگ است.",
+  "تو برای شروع کردن، به اجازهٔ کسی نیاز نداری.",
+  "امروز را جدی بگیر، ولی خودت را نه خیلی.",
+  "یک ورق تازه، یک فرصت تازه.",
+  "کار مهم را در ساعت پرانرژی روزت انجام بده.",
+  "اگر چیزی نگرانت کرده، آن را بنویس و یک قدم برایش بردار.",
+  "دوستی‌ها را مثل گیاه آب بده.",
+  "امروز به بدنت استراحت و به ذهنت آرامش بده.",
+  "هر بار انتخاب درست، انتخاب بعدی را آسان‌تر می‌کند.",
+  "خرج‌های کوچک را دریاب؛ آن‌ها بی‌صدا بزرگ می‌شوند.",
+  "لازم نیست برنده باشی؛ کافی است بهتر شوی.",
+  "امروز را با یک خبر خوب برای خودت تمام کن.",
+  "عجله نکن؛ ولی امروز هم از دست نرود.",
+  "از کارهای کوچکت شرمنده نباش؛ همه از همین‌جا شروع کرده‌اند.",
+  "یک برنامهٔ واقع‌بینانه، بهترین دوست یک روز شلوغ است.",
+  "وقتی خودت را باور کنی، دیگران هم باور می‌کنند.",
+  "امروز یک تصمیم را عقب نینداز.",
+  "چیزهای خوب را بشمار؛ بیشتر از آنچه فکر می‌کنی هستند.",
+  "امروز را با بهترین نسخهٔ خودت شروع کن، هر قدر هم که کوچک باشد.",
+  "حرکت کن؛ حتی کوچک‌ترین حرکت از ایستادن بهتر است.",
+  "آینده از همین امروز ساخته می‌شود.",
+  "در پایان روز، به خودت بگو: کارم را کردم.",
+  "یک نفس عمیق، یک کار کوچک، یک لبخند؛ امروز همین کافی است.",
+  "آرامش را انتخاب کن؛ هر بار، دوباره.",
+  "امروز هم می‌گذرد؛ بگذار خوب بگذرد.",
+  "تو در حال ساختن زندگی‌ات هستی؛ آجر به آجر.",
+  "روزهای خوب منتظر نمی‌مانند تا بیایند؛ ساخته می‌شوند.",
+  "با خودت صادق باش؛ همه‌چیز از آنجا شروع می‌شود.",
+  "امروز چیزی را تمام کن و با خیال راحت بخواب.",
+  "کمی امید، کمی تلاش، کمی صبر؛ همین.",
+  "هر روز یک فرصت است، نه یک امتحان.",
+  "آنچه امروز می‌کاری، فردا برداشت می‌کنی.",
+  "خودت را به خاطر سرعتت سرزنش نکن؛ جهت مهم‌تر است.",
+  "از هر کاری، یک درس و یک لبخند بردار.",
+  "بدنی که حرکت کند، ذهنی که آرام باشد، روزی که خوب بگذرد.",
+  "امروز به چیزی فکر کن که بابتش به خودت افتخار می‌کنی.",
+  "هیچ روزی بی‌ارزش نیست؛ حتی روزهایی که فقط استراحت کرده‌ای.",
+  "راه را با قدم‌های خودت برو، نه با سرعت دیگران.",
+  "کمی جلوتر برو؛ منظره از آنجا بهتر است.",
+  "یک کار کوچک امروز، یک نگرانی کمتر فردا.",
+  "وقتی دلت روشن است، روزت هم روشن است.",
+  "امروز با خودت آشتی کن.",
+  "آنچه را شروع کرده‌ای، با حوصله تمام کن.",
+  "تو هر روز در حال یاد گرفتنی؛ این خودش پیشرفت است.",
+  "یک ساعت تمرکز، از یک روز پراکندگی بیشتر می‌ارزد.",
+  "امروز اولین کار را فقط شروع کن؛ تمام کردنش بعداً.",
+  "چیزی را که امروز داری، دیروز آرزویش را داشتی.",
+  "در شلوغی‌ها، ساده‌ترین قدم را بردار.",
+  "به جای نگرانی دربارهٔ فردا، امروز را خوب بساز.",
+  "هر روز یک کار برای دلت، یک کار برای بدنت، یک کار برای آینده‌ات.",
+  "سخت‌ترین کارها هم با یک دقیقه شروع می‌شوند.",
+  "تو قوی‌تر از روزهای سختی.",
+  "امروز را همان‌طور که هست بپذیر و بهترین استفاده را از آن کن.",
+  "کمی بیشتر صبر، کمی کمتر عجله.",
+  "خودت را برای روزهایی که خوب نبودی ببخش.",
+  "یک برنامهٔ خوب، ذهن را آزاد می‌کند.",
+  "امروز هم یک صفحه از دفتر زندگی توست؛ زیبا بنویسش.",
+  "وقتی کار سخت می‌شود، کوچک‌ترش کن، نه رهایش.",
+  "به جای «نمی‌توانم» بگو «هنوز نتوانسته‌ام».",
+  "امروز کمتر مقایسه کن و بیشتر تجربه کن.",
+  "هر بار که دوباره شروع می‌کنی، از جای قبلی جلوتری.",
+  "نظم امروز، آزادی فردای توست.",
+  "یک یادداشت کوتاه از امروز، هدیه‌ای برای خودِ فردایت است.",
+  "لازم نیست همه‌چیز را بدانی تا قدم اول را برداری.",
+  "امروز را با یک کار ساده ولی کامل تمام کن.",
+  "وقتی برای خودت وقت می‌گذاری، برای دیگران هم انرژی بیشتری داری.",
+  "آرام‌آرام، ولی هر روز.",
+  "دخل و خرجت را بشناس تا غافلگیر نشوی.",
+  "امروز یک چیز را ساده‌تر کن.",
+  "خوب خوابیدن، اولین کار مهم فرداست.",
+  "هر روز یک فرصت برای مهربان‌تر بودن است.",
+  "وقتی مسیر را دوست داری، خستگی کمتر حس می‌شود.",
+  "تو از پس امروز برمی‌آیی؛ دیروز هم برآمدی."
+  ];
+
+const Quotes = (() => {
+  /* the same sentence all day, a new one every day (Jalali day of year, so it follows the Iranian calendar) */
+  function today(iso) {
+    iso = iso || J.today();
+    const [jy, jm, jd] = J.toJ(iso);
+    const doy = J.diff(iso, J.fromJ(jy, 1, 1));
+    return QUOTES[((doy + jy * 7) % QUOTES.length + QUOTES.length) % QUOTES.length] || QUOTES[0];
+  }
+  return { today, all: QUOTES };
+})();
+
+/* ================= Registration =================
+ * Name, family name, mobile and email are required once. They stay on the phone and are sent to the
+ * Bonyan Soft site when REG_URL is set (to be connected after the site's SMS service is ready).
+ */
+const Account = (() => {
+  const REG_URL = ''; /* e.g. 'https://bonyansoftware.ir/api/v1/app/register' — empty = not connected yet */
+  const acc = () => (S.settings.account = S.settings.account || {});
+  const normMobile = (v) => { let m = U.en(String(v || '')).replace(/[^\d+]/g, ''); if (m.startsWith('+98')) m = '0' + m.slice(3); else if (m.startsWith('0098')) m = '0' + m.slice(4); else if (/^9\d{9}$/.test(m)) m = '0' + m; return m; };
+  const okMobile = (m) => /^09\d{9}$/.test(m);
+  const okEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || '').trim());
+  const done = () => { const a = acc(); return !!(a.first && a.last && okMobile(a.mobile) && okEmail(a.email)); };
+  /* form html used in onboarding and in the sheet for users who already use the app */
+  function fieldsHtml(a = {}) {
+    const f = (id, label, val, type, ph, extra = '') => `<div class="fld" data-rf="${id}"><label for="reg_${id}">${label} <b class="req">*</b></label><input id="reg_${id}" type="${type}" value="${U.esc(val || '')}" placeholder="${ph}" ${extra}></div>`;
+    return `<div class="reg-grid">${f('first', 'نام', a.first, 'text', 'مثلاً علی', 'autocomplete="given-name"')}${f('last', 'نام خانوادگی', a.last, 'text', 'مثلاً رضایی', 'autocomplete="family-name"')}</div>
+      ${f('mobile', 'شمارهٔ موبایل', a.mobile, 'tel', '۰۹۱۲۳۴۵۶۷۸۹', 'inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right"')}
+      ${f('email', 'ایمیل', a.email, 'email', 'name@example.com', 'inputmode="email" autocomplete="email" dir="ltr" style="text-align:right"')}
+      <p class="small muted">${icon('lock', 13)} این اطلاعات برای پشتیبانی و فعال‌سازی برنامه به سایت بنیان سافت فرستاده می‌شود و در اختیار کس دیگری قرار نمی‌گیرد.</p>`;
+  }
+  /* read + validate; marks bad fields; returns the data or null */
+  function readForm(box) {
+    const g = (id) => (box.querySelector('#reg_' + id) || {}).value || '';
+    const v = { first: g('first').trim(), last: g('last').trim(), mobile: normMobile(g('mobile')), email: g('email').trim().toLowerCase() };
+    const bad = [];
+    if (!v.first) bad.push(['first', 'نام را بنویسید']);
+    if (!v.last) bad.push(['last', 'نام خانوادگی را بنویسید']);
+    if (!okMobile(v.mobile)) bad.push(['mobile', 'شمارهٔ موبایل درست نیست (مثل ۰۹۱۲۳۴۵۶۷۸۹)']);
+    if (!okEmail(v.email)) bad.push(['email', 'ایمیل درست نیست']);
+    box.querySelectorAll('[data-rf]').forEach((x) => x.classList.toggle('bad', bad.some((b) => b[0] === x.dataset.rf)));
+    if (bad.length) { App.toast(bad[0][1]); const i = box.querySelector('#reg_' + bad[0][0]); if (i) i.focus(); return null; }
+    return v;
+  }
+  function store(v) {
+    const a = acc();
+    const changed = a.first !== v.first || a.last !== v.last || a.mobile !== v.mobile || a.email !== v.email;
+    Object.assign(a, v, { at: a.at || Date.now() });
+    if (changed) { a.sent = false; a.sentAt = null; }
+    S.settings.name = v.first;
+    DB.save('settings');
+    sync();
+  }
+  /* send to the site when it is connected; retried on every start and when the phone comes online */
+  let busy = false;
+  async function sync() {
+    const a = acc();
+    if (!REG_URL || busy || a.sent || !done() || !navigator.onLine) return false;
+    busy = true;
+    try {
+      const L = License.lic();
+      const res = await fetch(REG_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ app: 'khodnegar', first: a.first, last: a.last, mobile: a.mobile, email: a.email, deviceId: L.id, platform: Platform.name, version: APP_VERSION }) });
+      if (res.ok) { a.sent = true; a.sentAt = Date.now(); DB.save('settings'); return true; }
+    } catch (e) { /* offline or site down: try again later */ }
+    finally { busy = false; }
+    return false;
+  }
+  window.addEventListener('online', () => { if (window.S && S.settings) sync(); });
+  /* users who started before v0.2.0 see a one-time registration page (cannot be skipped) */
+  function ensure() {
+    if (!S.settings.onboarded || done() || document.querySelector('.onb.acc')) { sync(); return; }
+    const a = acc();
+    if (!a.first && S.settings.name) a.first = S.settings.name;
+    const el = document.createElement('div'); el.className = 'onb acc';
+    el.innerHTML = `<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><h1>ثبت‌نام</h1><p class="lead">برای ادامه، یک بار مشخصات خود را وارد کنید. داده‌های برنامه همچنان روی همین گوشی می‌ماند.</p><div class="stack" data-reg>${fieldsHtml(a)}</div><button class="btn primary block" data-go>ثبت و ادامه</button></div>`;
+    document.body.appendChild(el);
+    el.querySelector('[data-go]').onclick = () => { const v = readForm(el.querySelector('[data-reg]')); if (!v) return; store(v); el.remove(); App.refresh(); App.toast('ثبت‌نام انجام شد، ' + v.first); };
+  }
+  function edit() {
+    const s = UI.sheet({ title: 'حساب کاربری', body: `<div class="stack" data-reg>${fieldsHtml(acc())}</div>`, foot: '<button class="btn primary" data-save>ذخیره</button>' });
+    s.el.querySelector('[data-save]').onclick = () => { const v = readForm(s.el.querySelector('[data-reg]')); if (!v) return; store(v); s.close(); App.refresh(); App.toast('ذخیره شد'); };
+  }
+  const status = () => { const a = acc(); if (!done()) return 'ثبت نشده'; return `${a.first} ${a.last} · ${U.fa(a.mobile)} · ${a.sent ? 'ارسال‌شده به سایت' : REG_URL ? 'در انتظار اینترنت برای ارسال' : 'روی گوشی ذخیره شده'}`; };
+  App.act('account.edit', edit);
+  return { done, ensure, sync, fieldsHtml, readForm, store, status, edit, normMobile, okMobile, okEmail, REG_URL };
 })();
 
 /* Khodnegar — boot */
