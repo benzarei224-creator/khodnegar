@@ -1,6 +1,10 @@
 <!doctype html>
-<!-- Khodnegar (خودنگار) v0.3.0 — personal life app, single-file HTML build
+<!-- Khodnegar (خودنگار) v0.4.0 — personal life app, single-file HTML build
      Changelog:
+     0.4.0  1405/08/06  Optional Structured-inspired layout with a day rail, coloured task cards,
+                        week navigation, free-time gaps and an inbox; independent layout, palette and brightness
+                        choices with live previews in the first onboarding step and Settings; six existing palettes
+                        and both light/dark variants preserved; one-time appearance choice for existing users.
      0.3.0  1405/08/06  Ideas from Structured, Calendars, Microsoft Planner and Zinnia (16 items chosen by the owner):
                         timeline view of today (blocks by time and duration, free-time gaps, now line, timed events);
                         task duration, icon (suggested from the title) and colour; inbox for undated tasks (quick add
@@ -738,6 +742,206 @@ small.journal-a{color:var(--accent)!important}
   .focus-pill{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
 @media (min-width:1000px){.focus-pill{bottom:28px;right:calc(50% + 120px)}.assistant-suggestions{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
+</style>
+<style>
+/* v0.4.0 — independent layouts; all colours come from the existing palettes. */
+.appearance-intro {display:flex;flex-direction:column;gap:7px}
+.appearance-intro h2 {font-size:28px;font-weight:800;letter-spacing:-.6px}
+.appearance-intro p {color:var(--muted);font-size:13px}
+.appearance-intro>.pill {align-self:flex-start}
+.appearance-controls {display:flex;flex-direction:column;gap:24px;min-width:0}
+.appearance-label {display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:10px}
+.appearance-label>span {width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:var(--accent-2);color:var(--accent);font-size:12px}
+.layout-options {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.layout-option {position:relative;text-align:right;padding:13px;border:1px solid var(--line);border-radius:20px;background:var(--surface);min-width:0}
+.layout-option.selected {border:2px solid var(--accent);padding:12px;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 8%,transparent)}
+.layout-option>b {display:flex;align-items:center;justify-content:space-between;gap:4px;font-size:14px;margin-top:10px}
+.layout-option>small {display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.layout-check {width:21px;height:21px;flex:none;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center}
+.selected .layout-check {background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.layout-mini {display:block;height:91px;background:var(--bg);border-radius:12px;padding:12px;overflow:hidden;position:relative}
+.layout-mini>em {display:block;height:4px;width:45%;background:var(--accent);border-radius:8px;margin-bottom:8px;opacity:.65}
+.layout-mini>i {display:block;height:15px;margin:5px 24px 5px 0;background:var(--accent-2);border-radius:6px;position:relative}
+.layout-mini.structured:before {content:'';position:absolute;right:20px;top:28px;bottom:11px;width:2px;background:var(--line)}
+.layout-mini.structured>i:before {content:'';position:absolute;right:-22px;top:3px;width:10px;height:10px;border:2px solid var(--accent);border-radius:50%;background:var(--surface)}
+.layout-mini.structured>i:nth-child(3) {background:color-mix(in srgb,var(--c-mood) 20%,var(--surface));height:22px}
+.layout-mini.notebook>em {width:100%;height:31px;background:var(--hero-paper);border:1px solid var(--line);opacity:1}
+.layout-mini.notebook>em:after {content:'✦';position:absolute;inset-inline-end:23px;top:16px;font-style:normal;color:var(--accent)}
+.layout-mini.notebook>i {margin:5px 0;height:11px;border-radius:3px}
+.layout-mini.notebook>i:last-child {width:65%}
+.appearance-workspace {display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,.8fr);gap:28px;align-items:start}
+.appearance-preview {position:sticky;top:104px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:20px;box-shadow:0 12px 35px color-mix(in srgb,var(--fg) 5%,transparent)}
+.appearance-preview-label {display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);margin-bottom:18px}
+.preview-date {color:var(--accent);font-size:11px}
+.preview-title {font-size:22px;font-weight:800;margin:3px 0 12px}
+.preview-week {display:flex;justify-content:space-between;margin-bottom:16px;font-size:11px;color:var(--muted)}
+.preview-week span {display:grid;place-items:center;gap:3px;padding:4px 7px;border-radius:10px}
+.preview-week .selected {color:var(--on-accent);background:var(--accent)}
+.preview-week b {font-size:13px}
+.preview-task {position:relative;display:flex;align-items:center;gap:10px;margin:8px 27px 8px 0;padding:11px 12px;border-radius:14px;background:color-mix(in srgb,var(--pc) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--pc) 24%,transparent);font-size:12px;min-height:60px}
+.preview-task:before {content:'';position:absolute;right:-22px;top:24px;width:9px;height:9px;border:2px solid var(--pc);border-radius:50%;background:var(--surface);z-index:1}
+.preview-task:after {content:'';position:absolute;right:-17px;top:34px;bottom:-36px;width:2px;background:var(--line)}
+.preview-task:last-child:after {display:none}
+.preview-task small {font-size:10px;color:var(--muted);display:block}
+.preview-task>.ic {color:var(--pc)}
+.preview-note {font-size:10px;color:var(--muted);margin-top:16px;text-align:center}
+.appearance-preview[data-preview=notebook] .preview-title {padding:17px;border-radius:12px;background:var(--hero-paper);font-size:19px}
+.appearance-preview[data-preview=notebook] .preview-task {margin-inline:0;border-radius:9px;background:var(--bg)}
+.appearance-preview[data-preview=notebook] .preview-task:before,.appearance-preview[data-preview=notebook] .preview-task:after {display:none}
+.palette-choices {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.palette-choice {display:flex;align-items:center;gap:8px;min-height:53px;text-align:right;padding:9px 10px;border:1px solid var(--line);border-radius:13px;background:var(--surface);min-width:0;font-size:11.5px}
+.palette-choice.selected {border-color:var(--accent);background:var(--accent-2);box-shadow:inset 0 0 0 1px var(--accent)}
+.palette-swatches {display:flex;direction:ltr;flex:none}
+.palette-swatches i {width:15px;height:23px;display:block;border:1px solid rgb(0 0 0 / .06)}
+.palette-swatches i:first-child {border-radius:6px 0 0 6px}.palette-swatches i:last-child{border-radius:0 6px 6px 0}
+.palette-choice>b {flex:1;min-width:0;font-weight:650}
+.appearance-mode-row {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.appearance-mode-row .btn {font-size:12px;padding:9px 6px;border-radius:12px}
+.appearance-summary {font-size:12px;color:var(--accent);display:flex;align-items:center;gap:6px;margin-top:4px}
+.onb.appearance-step .onb-in {max-width:880px;gap:20px;padding-top:26px}
+.onb-footer {position:sticky;bottom:0;background:var(--bg);padding:14px 0 calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);z-index:3}
+.onb.appearance-step .appearance-preview {top:20px}
+.onb-step-label {color:var(--muted);font-size:11px}
+/* Structured shell */
+:root[data-layout=structured] {--r:20px;--r-sm:14px;--shadow:none}
+:root[data-layout=structured] body {line-height:1.75}
+:root[data-layout=structured] :is(#inkBackdrop,.nav-note,.ink-heading,.card-art,.tile-art,.onb-art) {display:none!important}
+:root[data-layout=structured] .top {min-height:72px;margin-bottom:0;padding-inline:20px;border-bottom:1px solid var(--line);background:var(--bg)}
+:root[data-layout=structured] .top-t h1 {font-size:22px;letter-spacing:-.5px}
+:root[data-layout=structured] #topActs {gap:5px}
+:root[data-layout=structured] #topActs>.icon-btn {background:var(--surface);border:1px solid var(--line);border-radius:50%;width:37px;height:37px}
+:root[data-layout=structured] main {padding-top:20px;gap:20px}
+:root[data-layout=structured] main[data-screen=home] {display:block}
+:root[data-layout=structured] :is(.card,.list,.set-group) {border:1px solid var(--line);box-shadow:none;border-radius:20px}
+:root[data-layout=structured] .btn {border-radius:14px}
+:root[data-layout=structured] .ck {border-radius:50%}
+:root[data-layout=structured] .mod-tile {min-height:140px;padding:20px;gap:8px}
+:root[data-layout=structured] .mod-tile :is(b,small) {max-width:100%}
+:root[data-layout=structured] .mod-tile .li-ic {width:42px;height:42px;border-radius:14px}
+:root[data-layout=structured] .desktop-nav {border-inline-end:1px solid var(--line);background:var(--surface)}
+:root[data-layout=structured] .desktop-nav>p {font-size:11px}
+:root[data-layout=structured] .desktop-nav button {border-radius:14px;margin-bottom:3px}
+:root[data-layout=structured] .desktop-nav button.on {border:0;padding-inline-start:12px}
+:root[data-layout=structured] .mcard {border-radius:18px}
+:root[data-layout=structured] .mcard-h {min-height:32px}
+:root[data-layout=structured] .tabs {border-top:1px solid var(--line);box-shadow:0 -5px 25px color-mix(in srgb,var(--fg) 3%,transparent)}
+:root[data-layout=structured] .tabs button.on>.ic {border-radius:10px;background:transparent}
+:root[data-layout=structured] .tabs .tab-add span {width:54px;height:54px;box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 22%,transparent)}
+.sp-page {max-width:1100px;margin-inline:auto}
+.sp-heading {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:2px 0 22px}
+.sp-heading h2 {font-size:30px;font-weight:800;line-height:1.6;letter-spacing:-.7px}
+.sp-eyebrow {color:var(--accent);font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.sp-heading p {font-size:12px;color:var(--muted);margin-top:4px}
+.sp-heading .ring {flex:none}
+.sp-layout {display:grid;grid-template-columns:minmax(0,1.65fr) minmax(270px,1fr);gap:30px;align-items:start}
+.sp-primary,.sp-secondary {min-width:0;display:flex;flex-direction:column;gap:20px}
+.sp-secondary {gap:18px}
+.sp-week-box {background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px 12px 10px}
+.sp-month {display:flex;align-items:center;gap:4px;margin-bottom:6px}
+.sp-month>.grow {font-size:13px;font-weight:700;text-align:right;border:0;background:none;padding:4px}
+.sp-month .icon-btn {width:30px;height:32px}
+.sp-month .link {font-size:11px;padding:3px}
+.sp-week {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.sp-day {display:flex;flex-direction:column;align-items:center;gap:2px;border:0;border-radius:15px;min-width:0;min-height:73px;padding:9px 0 5px;background:none;color:var(--fg)}
+.sp-day>span {font-size:10px;color:var(--muted)}
+.sp-day>b {font-size:21px;font-weight:650;line-height:1.6}
+.sp-day>i {width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0}
+.sp-day.has-items>i {opacity:1}
+.sp-day.today:not(.selected) {background:var(--accent-2)}
+.sp-day.selected {background:var(--accent);color:var(--on-accent)}
+.sp-day.selected>span {color:inherit;opacity:.85}.sp-day.selected>i{background:currentColor}
+.sp-day.friday:not(.selected)>b{color:var(--danger)}
+.sp-filters {display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sp-filters .seg {flex:1;min-width:190px;border-radius:13px}
+.sp-filters .seg button {font-size:12px;padding:6px 8px}
+.sp-filters .view-switch {margin:0;flex:none}
+.sp-filters .view-switch button {padding:7px 9px;font-size:11px}
+.sp-agenda-head {display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sp-agenda-head h3 {font-size:15px;font-weight:750}
+.sp-agenda-head>span {font-size:11px;color:var(--muted)}
+.sp-timeline {position:relative;display:flex;flex-direction:column;gap:10px;padding-block:6px}
+.sp-timeline:before {content:'';position:absolute;inset-inline-start:67px;top:16px;bottom:24px;width:2px;background:var(--line)}
+.sp-entry {display:grid;grid-template-columns:44px 30px minmax(0,1fr);gap:9px;align-items:start;position:relative}
+.sp-time {font-size:11px;direction:ltr;text-align:center;padding-top:18px;color:var(--fg);font-weight:700;font-variant-numeric:tabular-nums}
+.sp-time small {display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:2px}
+.sp-node {width:32px;height:32px;background:var(--surface);color:var(--c);border:2px solid color-mix(in srgb,var(--c) 65%,var(--surface));border-radius:50%;display:grid;place-items:center;margin-top:12px;z-index:1}
+.sp-card {min-height:var(--block-height,88px);border-radius:18px;display:flex;align-items:center;gap:5px;padding:12px 11px;background:color-mix(in srgb,var(--c) 15%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 27%,var(--surface));min-width:0}
+.sp-card.event {border-style:dashed}
+.sp-open {flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:right;gap:5px;border:0;background:none;padding:2px 4px;color:var(--fg);align-self:stretch;justify-content:center}
+.sp-open b {font-size:14px;font-weight:750;overflow-wrap:anywhere;line-height:1.8}
+.sp-meta {display:flex;flex-wrap:wrap;align-items:center;gap:3px 7px;font-size:11px;color:var(--muted);text-align:right}
+.sp-meta .pill {font-size:9px;padding:1px 6px}
+.sp-card .ck {flex:none;width:31px;height:31px;min-width:31px;min-height:31px;background:var(--surface);border:1.5px solid color-mix(in srgb,var(--c) 60%,var(--surface));color:var(--c)}
+.sp-card .ck.on,.sp-card .ck.mini {background:var(--c);color:#fff;border-color:var(--c)}
+.sp-card .ck.mini {background:color-mix(in srgb,var(--c) 65%,var(--surface))}
+.sp-card .focus-go {width:30px;height:34px;color:var(--muted);flex:none}
+.sp-entry.done .sp-open b {text-decoration:line-through;text-decoration-thickness:1px;color:var(--muted)}
+.sp-entry.done .sp-card {background:color-mix(in srgb,var(--c) 5%,var(--surface));border-color:var(--line)}
+.sp-entry.active .sp-card {box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 40%,transparent)}
+.sp-gap {display:flex;align-items:center;justify-content:center;gap:6px;margin-inline-start:92px;min-height:47px;font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:14px;background:transparent}
+.sp-gap:hover {background:var(--surface);color:var(--accent)}
+.sp-now {display:flex;align-items:center;gap:9px;font-size:10px;font-weight:700;color:var(--danger);position:relative;z-index:2;padding-block:6px;background:var(--bg)}
+.sp-now>span {width:84px;text-align:center;flex:none}
+.sp-now:after {content:'';height:1px;flex:1;background:color-mix(in srgb,var(--danger) 60%,var(--bg))}
+.sp-end {margin-inline-start:92px;padding:15px 0;color:var(--muted);font-size:11px;text-align:center}
+.sp-tools {display:flex;flex-wrap:wrap;gap:6px;padding-top:8px}
+.sp-tools .btn {font-size:11px;flex:1;padding-inline:8px}
+.sp-side-card {padding:19px;border:1px solid var(--line);border-radius:21px;background:var(--surface);display:flex;flex-direction:column;gap:12px}
+.sp-side-head {display:flex;align-items:center;gap:8px;font-size:14px}
+.sp-side-head>.li-ic {width:34px;height:34px;border-radius:12px;background:var(--accent-2);color:var(--accent)}
+.sp-side-card>p {font-size:12px;color:var(--muted);line-height:1.9}
+.sp-side-card .btn {font-size:12px}
+.sp-inbox-row {display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.sp-inbox-row:last-child {border:0}
+.sp-inbox-row>b {flex:1;font-size:12px;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.sp-inbox-row .icon-btn {width:30px;height:32px;color:var(--accent)}
+.sp-today-cards summary {list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;min-height:44px}
+.sp-today-cards summary::-webkit-details-marker {display:none}
+.sp-today-cards[open] summary {margin-bottom:12px}
+.sp-today-cards .cards {grid-template-columns:1fr}
+.sp-untimed {display:flex;flex-direction:column;gap:9px}
+.sp-untimed>h4 {color:var(--muted);font-size:12px}
+.sp-untimed .sp-entry {grid-template-columns:30px minmax(0,1fr)}
+.sp-untimed .sp-time {display:none}
+.sp-untimed .sp-node {margin-top:16px}
+.sp-empty {text-align:center;border:1px dashed var(--line);border-radius:22px;padding:30px 18px;display:flex;align-items:center;flex-direction:column;gap:14px}
+.sp-empty>span {width:58px;height:58px;border-radius:20px;background:var(--accent-2);color:var(--accent);display:grid;place-items:center}
+.sp-empty h3 {font-size:18px}
+.sp-empty p {color:var(--muted);font-size:12px;max-width:320px}
+.sp-holiday {color:var(--warn);font-size:11px;padding:8px 0}
+@media(min-width:1000px){
+  :root[data-layout=structured] #app {padding-inline:30px;max-width:1450px}
+  :root[data-layout=structured] .top {padding-inline:0;margin-bottom:0;min-height:82px}
+  :root[data-layout=structured] main {padding:25px 0}
+  :root[data-layout=structured] .desktop-nav {padding-top:25px}
+}
+@media(max-width:1190px){.sp-layout{grid-template-columns:minmax(0,1.5fr) minmax(240px,1fr);gap:20px}.sp-card .focus-go{display:none}}
+@media(max-width:999px){
+  .sp-layout {grid-template-columns:minmax(0,1fr)}
+  .sp-heading h2 {font-size:27px}.sp-heading {padding-bottom:18px}
+  .sp-secondary {margin-top:4px}.sp-today-cards .cards {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sp-card .focus-go {display:grid}
+  .sp-heading .ring {width:54px!important;height:54px!important}.sp-heading .ring>svg{width:54px;height:54px}
+}
+@media(max-width:680px){
+  .appearance-workspace {grid-template-columns:minmax(0,1fr);gap:20px}
+  .appearance-preview {position:static;order:1;padding:14px 18px}
+  .appearance-preview-label {margin-bottom:6px}.preview-title{font-size:19px;margin-bottom:6px}
+  .preview-week {margin-bottom:8px}.preview-week span{padding-block:1px}
+  .preview-task {padding:7px 11px;min-height:46px;margin-block:6px}.preview-task:before{top:18px}.preview-task:after{top:28px;bottom:-28px}
+  .preview-note {margin-top:10px}.appearance-controls{gap:22px}
+  .appearance-preview .preview-task:last-of-type {display:none}
+  .onb.appearance-step .onb-in {padding-inline:20px;gap:16px}
+}
+@media(max-width:380px){
+  :root[data-layout=structured] main {padding-inline:12px}
+  .sp-entry {grid-template-columns:37px 26px minmax(0,1fr);gap:6px}
+  .sp-timeline:before {inset-inline-start:55px}.sp-node{width:28px;height:28px}
+  .sp-card {padding:10px 7px}.sp-open b{font-size:13px}.sp-card .focus-go{display:none}
+  .sp-gap,.sp-end {margin-inline-start:75px}.sp-now>span{width:69px}
+  .sp-heading h2 {font-size:23px}.palette-choice{gap:5px;padding-inline:7px;font-size:10.5px}.palette-swatches i{width:12px}
+}
+
 </style>
 </head>
 <style id="kn-v020">
@@ -2144,7 +2348,7 @@ const Charts = (() => {
 
 /* ---- js/core/app.js ---- */
 /* Khodnegar — application shell: modules, navigation, actions, rendering */
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.4.0';
 const MODULE_ORDER = ['tasks', 'goals', 'work', 'calendar', 'finance', 'food', 'workout', 'mood'];
 const App = (() => {
   const mods = {};
@@ -2275,6 +2479,7 @@ const App = (() => {
     else if (!License.check()) { /* license screen shown by check */ }
     else { Lock.boot(); Account.ensure(); }
     render(true);
+    if (S.settings.onboarded) Appearance.invite();
     Notify.start();
     window.addEventListener('focus', () => { if (S.settings.onboarded) { Rollover.run(); refresh(); } });
     setInterval(() => { const t = J.today(); if (t !== App._lastDay) { App._lastDay = t; Rollover.run(); Backup.auto(); refresh(); } }, 60000);
@@ -2290,7 +2495,7 @@ const Defaults = (() => {
   const EMOTIONS = ['آرام', 'شاد', 'پرانرژی', 'قدردان', 'امیدوار', 'خسته', 'نگران', 'مضطرب', 'عصبانی', 'غمگین', 'تنها', 'بی‌حوصله', 'استرس'];
   const AREAS = ['سلامت', 'مالی', 'خانواده', 'کار و حرفه', 'رشد فردی', 'روابط', 'تفریح', 'معنوی'];
   const settings = () => ({
-    name: '', onboarded: false, theme: 'auto', palette: 'olive', illustrations: true, reduceMotion: false, assistant: { mode: 'local', endpoint: '', shareContext: false }, unit: 'toman', persona: null,
+    name: '', onboarded: false, layout: 'notebook', appearanceChosen: false, structuredView: 'timeline', theme: 'auto', palette: 'olive', illustrations: true, reduceMotion: false, assistant: { mode: 'local', endpoint: '', shareContext: false }, unit: 'toman', persona: null,
     modules: Object.fromEntries(MODULE_ORDER.map((m) => [m, { on: true, home: true }])),
     homeOrder: ['calendar', 'finance', 'food', 'workout', 'mood', 'goals', 'work'],
     rollover: true, showDone: true,
@@ -2340,7 +2545,9 @@ const Defaults = (() => {
     return out;
   }
   function ensure() {
+    const newInstall = !S.settings?.onboarded && !S.settings?.layout;
     S.settings = merge(S.settings || {}, settings());
+    if (newInstall) S.settings.layout = 'structured';
     if (!S.cats.length) { S.cats = starterCats(); DB.save('cats'); }
     if (!S.accounts.length) { S.accounts = [{ id: U.uid(), name: 'نقد', type: 'cash', initial: 0 }, { id: U.uid(), name: 'کارت بانکی', type: 'card', initial: 0 }]; DB.save('accounts'); }
     DB.save('settings');
@@ -4818,6 +5025,7 @@ const Home = (() => {
   let showDone = true;
   function greet() { const h = new Date().getHours(); return h < 5 ? 'شب بخیر' : h < 12 ? 'صبح بخیر' : h < 16 ? 'ظهر بخیر' : h < 20 ? 'عصر بخیر' : 'شب بخیر'; }
   function screen() {
+    if (Appearance.layout().id === 'structured') return StructuredHome.screen();
     const today = J.today();
     const hol = Holidays.get(today);
     const sc = Score.day(today);
@@ -4898,7 +5106,7 @@ const Settings = (() => {
     const st = S.settings;
     const L = License.lic();
     let body = `<div class="set-group">${row('users', 'حساب کاربری', U.esc(Account.status()), icon('chevL', 18), 'data-a="account.edit"')}
-      ${row('sun', 'رنگ و ظاهر', Appearance.current().name + ' · ' + { auto: 'خودکار', light: 'روشن', dark: 'تیره' }[st.theme], icon('chevL', 18), go('settings/appearance'))}
+      ${row('sun', 'رنگ و ظاهر', Appearance.layout().name + ' · ' + Appearance.current().name + ' · ' + { auto: 'خودکار', light: 'روشن', dark: 'تیره' }[st.theme], icon('chevL', 18), go('settings/appearance'))}
       ${row('sparkle', 'دستیار هوشمند', st.assistant.mode === 'online' ? 'گفت‌وگوی آنلاین و ابزارهای محلی' : 'ابزارهای محلی؛ بدون نیاز به اینترنت', icon('chevL',18),go('settings/assistant'))}
       ${row('cash', 'واحد پول', st.unit === 'rial' ? 'ریال' : 'تومان', icon('chevL', 18), 'data-a="settings.unit"')}</div>`;
     body += `<div class="set-group">${row('book', 'راهنمای تصویری برنامه', 'آموزش کامل و گام‌به‌گام همهٔ بخش‌ها', icon('chevL',18), go('settings/guide'))}</div>`;
@@ -5556,17 +5764,24 @@ const Onboard = (() => {
     document.body.appendChild(el);
     const P = Defaults.PERSONAS;
     const draw = () => {
+      const old=document.activeElement, focusA=old?.dataset.a, focusId=old?.dataset.id, scroll=el.scrollTop;
+      el.classList.toggle('appearance-step',step===0);
       if (!mods) mods = MODULE_ORDER.filter((m) => !P[persona].off.includes(m));
-      let h = `<div class="onb-in"><div class="steps-dots">${[0, 1, 2, 3].map((i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>`;
-      if (step === 0) h += `<div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><div class="onb-art" aria-hidden="true">${InkScenes.picture('home')}</div><h1>دفتر زندگی تو، به خط خودت</h1><p class="lead">کارها، اهداف و عادت‌ها، تقویم شمسی، مالی، غذا، ورزش و حال روحی؛ همه کنار هم و روی همین دستگاه.</p><h2 style="font-size:17px;margin:0">ثبت‌نام</h2><div class="stack" data-reg>${Account.fieldsHtml(reg)}</div>`;
-      if (step === 1) h += `<h1>بیشتر به کدام نزدیک‌ترید؟</h1><p class="lead">بخش‌ها و چند هدف و عادت نمونه را برایتان آماده می‌کنیم. بعداً همه‌چیز قابل تغییر است.</p><div class="persona-grid">${Object.entries(P).map(([k, p]) => `<button class="persona ${k === persona ? 'on' : ''}" data-p="${k}">${icon(p.icon, 22)}<b>${p.label}</b><small>${p.desc}</small></button>`).join('')}</div>`;
-      if (step === 2) h += `<h1>کدام بخش‌ها را می‌خواهید؟</h1><p class="lead">بخش‌های خاموش در برنامه دیده نمی‌شوند. هر وقت خواستید از تنظیمات روشنشان کنید.</p><div class="set-group">${MODULE_ORDER.map((id) => { const m = App.mods[id]; return `<label class="set-row"><span class="li-ic" style="--c:${m.c}">${icon(m.icon)}</span><div class="grow"><b>${m.title}</b><small>${m.desc}</small></div><span class="switch"><input type="checkbox" data-m="${id}" ${mods.includes(id) ? 'checked' : ''} ${id === 'tasks' ? 'disabled' : ''}><span></span></span></label>`; }).join('')}</div>`;
-      if (step === 3) h += `<h1>آخرین قدم</h1><div class="fld"><label>مبالغ به چه واحدی نمایش داده شوند؟</label><div class="chips"><label class="chip-r"><input type="radio" name="onbU" value="toman" ${unit === 'toman' ? 'checked' : ''}><span>تومان</span></label><label class="chip-r"><input type="radio" name="onbU" value="rial" ${unit === 'rial' ? 'checked' : ''}><span>ریال</span></label></div></div>
+      let h = `<div class="onb-in"><div class="steps-dots">${[0, 1, 2, 3, 4].map((i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>`;
+      if (step === 0) h += `<div class="brand"><div class="brand-mark">خ</div><b>خودنگار، به سلیقهٔ تو</b></div><div class="appearance-intro"><h1>برنامه‌ات چه ظاهری داشته باشد؟</h1><p>ظاهر، پالت رنگی و روشنایی را انتخاب کن؛ بعداً هم می‌توانی از تنظیمات عوضشان کنی.</p></div>${Appearance.controls()}`;
+      if (step === 1) h += `<div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><div class="onb-art" aria-hidden="true">${InkScenes.picture('home')}</div><h1>دفتر زندگی تو، به خط خودت</h1><p class="lead">کارها، اهداف و عادت‌ها، تقویم شمسی، مالی، غذا، ورزش و حال روحی؛ همه کنار هم و روی همین دستگاه.</p><h2 style="font-size:17px;margin:0">ثبت‌نام</h2><div class="stack" data-reg>${Account.fieldsHtml(reg)}</div>`;
+      if (step === 2) h += `<h1>بیشتر به کدام نزدیک‌ترید؟</h1><p class="lead">بخش‌ها و چند هدف و عادت نمونه را برایتان آماده می‌کنیم. بعداً همه‌چیز قابل تغییر است.</p><div class="persona-grid">${Object.entries(P).map(([k, p]) => `<button class="persona ${k === persona ? 'on' : ''}" data-p="${k}">${icon(p.icon, 22)}<b>${p.label}</b><small>${p.desc}</small></button>`).join('')}</div>`;
+      if (step === 3) h += `<h1>کدام بخش‌ها را می‌خواهید؟</h1><p class="lead">بخش‌های خاموش در برنامه دیده نمی‌شوند. هر وقت خواستید از تنظیمات روشنشان کنید.</p><div class="set-group">${MODULE_ORDER.map((id) => { const m = App.mods[id]; return `<label class="set-row"><span class="li-ic" style="--c:${m.c}">${icon(m.icon)}</span><div class="grow"><b>${m.title}</b><small>${m.desc}</small></div><span class="switch"><input type="checkbox" data-m="${id}" ${mods.includes(id) ? 'checked' : ''} ${id === 'tasks' ? 'disabled' : ''}><span></span></span></label>`; }).join('')}</div>`;
+      if (step === 4) h += `<h1>آخرین قدم</h1><div class="fld"><label>مبالغ به چه واحدی نمایش داده شوند؟</label><div class="chips"><label class="chip-r"><input type="radio" name="onbU" value="toman" ${unit === 'toman' ? 'checked' : ''}><span>تومان</span></label><label class="chip-r"><input type="radio" name="onbU" value="rial" ${unit === 'rial' ? 'checked' : ''}><span>ریال</span></label></div></div>
         <label class="set-group set-row" style="padding:12px 14px"><div class="grow"><b>با داده‌های نمونه شروع کن</b><small>برای آشنایی با برنامه، چند کار، تراکنش، تمرین و ثبت حال نمونه ساخته می‌شود. بعداً از تنظیمات پاک می‌شوند.</small></div><span class="switch"><input type="checkbox" id="onbDemo" ${demo ? 'checked' : ''}><span></span></span></label>
         <div class="notice info">${icon('lock', 18)}<div class="small">داده‌های برنامه فقط روی همین گوشی ذخیره می‌شود و هر روز یک پشتیبان خودکار داخل برنامه ساخته می‌شود. دورهٔ آزمایشی: ${U.fa(License.TRIAL_DAYS)} روز.</div></div>`;
-      h += `<div class="row"><button class="btn ghost" data-back ${step === 0 ? 'hidden' : ''}>قبلی</button><button class="btn primary grow" data-next>${step === 3 ? 'شروع' : 'ادامه'}</button></div></div>`;
+      h += `<div class="row onb-footer"><button class="btn ghost" data-back ${step === 0 ? 'hidden' : ''}>قبلی</button><button class="btn primary grow" data-next>${step === 4 ? 'شروع' : 'ادامه'}</button></div></div>`;
       el.innerHTML = h;
+      el.scrollTop=scroll;Appearance.focusChoice(el,focusA,focusId);
+      const heading=el.querySelector('h1');if(heading)heading.tabIndex=-1;
     };
+    const onAppearance=()=>{if(step===0)draw();};
+    window.addEventListener('appearancechange',onAppearance);
     const collect = () => {
       const rb = el.querySelector('[data-reg]'); if (rb) ['first', 'last', 'mobile', 'email'].forEach((k) => { const i = rb.querySelector('#reg_' + k); if (i) reg[k] = i.value; });
       const ms = el.querySelectorAll('[data-m]'); if (ms.length) mods = [...ms].filter((x) => x.checked || x.dataset.m === 'tasks').map((x) => x.dataset.m);
@@ -5575,19 +5790,20 @@ const Onboard = (() => {
     };
     el.addEventListener('click', (e) => {
       const p = e.target.closest('[data-p]'); if (p) { persona = p.dataset.p; mods = null; draw(); return; }
-      if (e.target.closest('[data-back]')) { collect(); step--; draw(); return; }
+      if (e.target.closest('[data-back]')) { collect(); step--; draw(); el.scrollTop=0; el.querySelector('h1')?.focus({preventScroll:true}); return; }
       if (e.target.closest('[data-next]')) {
-        if (step === 0) { collect(); const v = Account.readForm(el.querySelector('[data-reg]')); if (!v) return; reg = v; name = v.first; }
+        if (step === 1) { collect(); const v = Account.readForm(el.querySelector('[data-reg]')); if (!v) return; reg = v; name = v.first; }
         else collect();
-        if (step < 3) { step++; draw(); el.scrollTop = 0; return; }
+        if (step < 4) { step++; draw(); el.scrollTop = 0; el.querySelector('h1')?.focus({preventScroll:true}); return; }
         S.settings.name = name; S.settings.unit = unit;
         if (reg.first) Account.store({ first: reg.first, last: reg.last, mobile: reg.mobile, email: reg.email });
         Defaults.applyPersona(persona, mods);
-        S.settings.onboarded = true; S.settings.created = J.today(); S.settings.onboardAt = Date.now();
+        S.settings.appearanceChosen = true; S.settings.onboarded = true; S.settings.created = J.today(); S.settings.onboardAt = Date.now();
         License.lic();
         if (demo) Demo.load();
         DB.save('settings');
-        el.remove(); App.setTab('home'); Backup.auto();
+        window.removeEventListener('appearancechange',onAppearance);
+        App.applyTheme(); el.remove(); App.setTab('home'); Backup.auto();
         App.toast('به خودنگار خوش آمدید' + (name ? '، ' + name : ''));
         Guide.invite();
       }
@@ -5796,6 +6012,7 @@ const Appearance = (() => {
     const dark=mode==='dark'||(mode==='auto'&&mq.matches);
     root.dataset.theme=dark?'dark':'light';
     root.dataset.palette=palettes[S.settings.palette]?S.settings.palette:'olive';
+    root.dataset.layout=layout().id;
     root.dataset.art=S.settings.illustrations===false?'off':'on';
     root.dataset.motion=S.settings.reduceMotion?'reduce':'normal';
     root.dataset.text=['md','lg','xl'].includes(S.settings.textSize)?S.settings.textSize:'md';
@@ -5806,25 +6023,84 @@ const Appearance = (() => {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content',values[0]);
     root.style.colorScheme=dark?'dark':'light';
   }
-  const onSystemChange=()=>{if(S.settings?.theme==='auto')apply();};
+  const onSystemChange=()=>{if(S.settings?.theme==='auto'){apply();if(App.cur().s==='settings/appearance')App.refresh();window.dispatchEvent(new Event('appearancechange'));}};
   if(mq.addEventListener)mq.addEventListener('change',onSystemChange);else mq.addListener(onSystemChange);
-  function screen(){
-    const chosen=palettes[S.settings.palette]?S.settings.palette:'olive';
-    const mode=S.settings.theme||'auto';
-    return {title:'رنگ و ظاهر',body:`<section class="appearance-hero"><span class="pill mod">به سلیقهٔ خودت</span><h2>دفترت چه رنگی باشد؟</h2><p class="muted">رنگ‌ها را امتحان کن؛ انتخابت خودکار ذخیره می‌شود.</p></section>
-      <div class="palette-grid" role="group" aria-label="پالت رنگی">${Object.entries(palettes).map(([id,p])=>`<button class="palette-option ${id===chosen?'selected':''}" data-a="appearance.palette" data-id="${id}" aria-pressed="${id===chosen}"><span class="palette-art" style="background:${p.light[0]};color:${p.light[6]}"><span style="background:${p.light[1]}"></span><i style="background:${p.light[6]}"></i><i style="background:${p.light[7]}"></i><i style="background:${p.light[3]}"></i>${icon('sparkle',22)}</span><span class="palette-label"><b>${p.name}</b><span class="palette-tick">${id===chosen?icon('check',18):''}</span></span><small>${p.note}</small></button>`).join('')}</div>
-      ${UI.sec('اندازهٔ متن',`<div class="theme-modes" role="group" aria-label="اندازهٔ متن">${[['md','معمولی'],['lg','درشت'],['xl','خیلی درشت']].map(([id,label])=>`<button class="btn ${(S.settings.textSize||'md')===id?'primary':'ghost'}" aria-pressed="${(S.settings.textSize||'md')===id}" data-a="appearance.text" data-id="${id}"><span style="font-size:${{md:14,lg:17,xl:20}[id]}px">آ</span> ${label}</button>`).join('')}</div><p class="small muted">همهٔ متن‌ها و دکمه‌ها با هم بزرگ می‌شوند.</p>`)}
-      ${UI.sec('روشنایی',`<div class="theme-modes" role="group" aria-label="روشنایی">${[['auto','phone','خودکار'],['light','sun','روشن'],['dark','moon','تیره']].map(([id,ic,label])=>`<button class="btn ${mode===id?'primary':'ghost'}" aria-pressed="${mode===id}" data-a="appearance.mode" data-id="${id}">${icon(ic,19)} ${label}</button>`).join('')}</div>`)}
-      <div class="set-group"><label class="set-row"><div class="grow"><b>تصویرهای دفتر</b><small>نقاشی‌های بخش‌ها و پس‌زمینه</small></div><span class="switch"><input type="checkbox" data-ch="appearance.art" ${S.settings.illustrations!==false?'checked':''}><span></span></span></label><label class="set-row"><div class="grow"><b>کاهش حرکت</b><small>نمایش ساده‌تر، بدون جلوه‌های حرکتی</small></div><span class="switch"><input type="checkbox" data-ch="appearance.motion" ${S.settings.reduceMotion?'checked':''}><span></span></span></label></div>`};
+  const layouts = {
+    notebook: {id:'notebook', name:'دفتر خودنگار', note:'ظاهر فعلی، با حس‌وحال دفتر'},
+    structured: {id:'structured', name:'Structured', note:'خط زمانی و کارت‌های رنگی'}
+  };
+  function layout(){return layouts[S.settings.layout] || layouts.notebook;}
+  function preview(){
+    const days=['ش','ی','د','س','چ','پ','ج'];
+    return `<aside class="appearance-preview" data-preview="${layout().id}" aria-label="پیش‌نمایش ظاهر انتخاب‌شده">
+      <div class="appearance-preview-label">${icon('eye',14)} پیش‌نمایش زنده · ${layout().name}</div>
+      <div class="preview-date">چهارشنبه، ۶ آبان</div><div class="preview-title">${layout().id==='structured'?'روزت، به ریتم خودت.':'امروز، برای خودت.'}</div>
+      <div class="preview-week" aria-hidden="true">${days.map((d,i)=>`<span class="${i===4?'selected':''}">${d}<b>${U.fa(i+2)}</b></span>`).join('')}</div>
+      <div class="preview-task" style="--pc:var(--accent)">${icon('sun',20)}<div><b>یک شروع آرام</b><small>۰۸:۰۰ · ۳۰ دقیقه</small></div></div>
+      <div class="preview-task" style="--pc:var(--c-goals)">${icon('book',20)}<div><b>وقتِ یاد گرفتن</b><small>۰۹:۰۰ · یک ساعت</small></div></div>
+      <div class="preview-task" style="--pc:var(--c-food)">${icon('food',20)}<div><b>وقت ناهار</b><small>۱۳:۰۰ · ۴۵ دقیقه</small></div></div>
+      <p class="preview-note">این کارها فقط برای پیش‌نمایش هستند.</p></aside>`;
   }
-  function persist(){apply();DB.save('settings');App.refresh();}
+  function controls(){
+    const chosen=palettes[S.settings.palette]?S.settings.palette:'olive';
+    const dark=document.documentElement.dataset.theme==='dark';
+    const mode=S.settings.theme||'auto';
+    return `<div class="appearance-workspace"><div class="appearance-controls">
+      <section><h3 class="appearance-label"><span>۱</span> کدام ظاهر را دوست داری؟</h3>
+        <div class="layout-options" role="group" aria-label="ظاهر برنامه">${Object.entries(layouts).map(([id,p])=>`<button type="button" class="layout-option ${id===layout().id?'selected':''}" data-a="appearance.layout" data-id="${id}" aria-pressed="${id===layout().id}"><span class="layout-mini ${id}" aria-hidden="true"><em></em><i></i><i></i><i></i></span><b><bdi>${p.name}</bdi><span class="layout-check">${id===layout().id?icon('check',13):''}</span></b><small>${p.note}</small></button>`).join('')}</div>
+      </section>
+      <section><h3 class="appearance-label"><span>۲</span> با کدام پالت رنگی؟</h3>
+        <div class="palette-choices" role="group" aria-label="پالت رنگی">${Object.entries(palettes).map(([id,p])=>{const c=p[dark?'dark':'light'];return `<button type="button" class="palette-choice ${chosen===id?'selected':''}" data-a="appearance.palette" data-id="${id}" aria-pressed="${chosen===id}"><span class="palette-swatches" aria-hidden="true"><i style="background:${c[0]}"></i><i style="background:${c[7]}"></i><i style="background:${c[6]}"></i></span><b>${p.name}</b>${chosen===id?icon('check',13):''}</button>`;}).join('')}</div>
+      </section>
+      <section><h3 class="appearance-label"><span>۳</span> روشنایی صفحه</h3>
+        <div class="appearance-mode-row" role="group" aria-label="روشنایی">${[['auto','phone','خودکار'],['light','sun','روشن'],['dark','moon','تیره']].map(([id,ic,label])=>`<button type="button" class="btn ${mode===id?'primary':'ghost'}" aria-pressed="${mode===id}" data-a="appearance.mode" data-id="${id}">${icon(ic,17)} ${label}</button>`).join('')}</div>
+      </section>
+      <p class="appearance-summary" aria-live="polite">${icon('check',15)} <bdi>${layout().name}</bdi> · ${current().name} · ${{auto:'خودکار',light:'روشن',dark:'تیره'}[mode]||'خودکار'}</p>
+    </div>${preview()}</div>`;
+  }
+  function focusChoice(scope, a, id){
+    if(!a||!id)return;
+    const btn=[...scope.querySelectorAll('[data-a][data-id]')].find(x=>x.dataset.a===a&&x.dataset.id===id);
+    btn?.focus({preventScroll:true});
+  }
+  let welcomeObserver=null;
+  function invite(){
+    if(!S.settings.onboarded||S.settings.appearanceChosen)return;
+    if(document.querySelector('.onb,.lockscr,.sheet-wrap')){
+      if(!welcomeObserver){welcomeObserver=new MutationObserver(()=>{if(!document.querySelector('.onb,.lockscr,.sheet-wrap')){welcomeObserver.disconnect();welcomeObserver=null;invite();}});welcomeObserver.observe(document.body,{childList:true,subtree:true});}
+      return;
+    }
+    const el=document.createElement('div');el.className='onb appearance-step';
+    el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','انتخاب ظاهر خودنگار');
+    const draw=()=>{const old=document.activeElement,a=old?.dataset.a,id=old?.dataset.id,scroll=el.scrollTop;el.innerHTML=`<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b>خودنگار، به سلیقهٔ تو</b></div><div class="appearance-intro"><h1>ظاهر برنامه را انتخاب کن</h1><p>ظاهر Structured اضافه شده. می‌توانی همین ظاهر فعلی را نگه داری یا ترکیب تازه‌ای را امتحان کنی.</p></div>${controls()}<div class="onb-footer"><button class="btn primary block" data-finish-appearance>ذخیره و ورود به برنامه ${icon('chevL',18)}</button></div></div>`;el.scrollTop=scroll;focusChoice(el,a,id);};
+    document.body.append(el);draw();
+    const blocked=[document.getElementById('app'),document.querySelector('.tabs'),document.getElementById('desktopNav')].filter(Boolean);
+    const wasInert=blocked.map(x=>x.inert);blocked.forEach(x=>x.inert=true);
+    const onChange=()=>draw();window.addEventListener('appearancechange',onChange);
+    el.addEventListener('keydown',e=>{
+      if(e.key!=='Tab')return;
+      const xs=[...el.querySelectorAll('button:not([disabled])')];const first=xs[0],last=xs[xs.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+    });
+    el.addEventListener('click',e=>{if(!e.target.closest('[data-finish-appearance]'))return;S.settings.appearanceChosen=true;DB.save('settings');window.removeEventListener('appearancechange',onChange);el.remove();blocked.forEach((x,i)=>x.inert=wasInert[i]);App.refresh();App.toast('ظاهر انتخاب‌شده ذخیره شد');});
+    el.querySelector('.layout-option.selected')?.focus({preventScroll:true});
+  }
+
+  function screen(){
+    return {title:'رنگ و ظاهر',body:`<section class="appearance-intro"><span class="pill mod">به سلیقهٔ خودت</span><h2>ظاهر تو، رنگ تو.</h2><p>دو ظاهر، شش پالت؛ هر ترکیب را امتحان کن. انتخابت خودکار ذخیره می‌شود.</p></section>
+      ${controls()}
+      ${UI.sec('اندازهٔ متن',`<div class="theme-modes" role="group" aria-label="اندازهٔ متن">${[['md','معمولی'],['lg','درشت'],['xl','خیلی درشت']].map(([id,label])=>`<button class="btn ${(S.settings.textSize||'md')===id?'primary':'ghost'}" aria-pressed="${(S.settings.textSize||'md')===id}" data-a="appearance.text" data-id="${id}"><span style="font-size:${{md:14,lg:17,xl:20}[id]}px">آ</span> ${label}</button>`).join('')}</div><p class="small muted">همهٔ متن‌ها و دکمه‌ها با هم بزرگ می‌شوند.</p>`)}
+      <div class="set-group"><label class="set-row"><div class="grow"><b>تصویرهای دفتر</b><small>نقاشی‌های بخش‌ها در ظاهر «دفتر خودنگار»</small></div><span class="switch"><input type="checkbox" data-ch="appearance.art" ${S.settings.illustrations!==false?'checked':''}><span></span></span></label><label class="set-row"><div class="grow"><b>کاهش حرکت</b><small>نمایش ساده‌تر، بدون جلوه‌های حرکتی</small></div><span class="switch"><input type="checkbox" data-ch="appearance.motion" ${S.settings.reduceMotion?'checked':''}><span></span></span></label></div>`};
+  }
+  function persist(){const el=document.activeElement,a=el?.dataset.a,id=el?.dataset.id;apply();DB.save('settings');App.refresh();window.dispatchEvent(new Event('appearancechange'));if(!document.querySelector('.onb'))focusChoice(document,a,id);}
   App.screen('settings/appearance',screen);
+  App.act('appearance.layout',d=>{if(layouts[d.id]){S.settings.layout=d.id;persist();}});
   App.act('appearance.palette',d=>{if(palettes[d.id]){S.settings.palette=d.id;persist();}});
   App.act('appearance.mode',d=>{if(['auto','dark','light'].includes(d.id)){S.settings.theme=d.id;persist();}});
   App.act('appearance.art',(d,el)=>{S.settings.illustrations=el.checked;persist();});
   App.act('appearance.motion',(d,el)=>{S.settings.reduceMotion=el.checked;persist();});
   App.act('appearance.text',d=>{if(['md','lg','xl'].includes(d.id)){S.settings.textSize=d.id;persist();}});
-  return {apply,current,palettes};
+  return {apply,current,palettes,layout,controls,focusChoice,invite};
 })();
 
 /* Khodnegar companion: deterministic local tools + optional authenticated AI bridge.
@@ -6054,7 +6330,7 @@ const Guide=(()=>{
  ['home','home','شروع و صفحهٔ امروز','خانهٔ دفتر تو', ['در صفحهٔ «امروز»، تاریخ، کارهای امروز و خلاصهٔ بخش‌های فعال را ببین.','با «کار جدید» یک کار بساز؛ برای انجام شدن آن، تیک کنار کار را بزن.','با نوار پایین بین امروز، تقویم، بخش‌ها و تنظیمات جابه‌جا شو؛ دکمهٔ + برای افزودن سریع است.'],['امروز، برای خودت','□ کارهای امروز','＋ افزودن سریع']],
  ['tasks','tasks','کارها و اولویت‌ها','یک قدم در هر بار',['از بخش «کارها» یا «کار جدید» در صفحهٔ اصلی وارد فرم ثبت شو.','عنوان، تاریخ شمسی، ساعت و اولویت را مشخص کن؛ برای کار تکراری، تکرار را تنظیم کن.','کار را ذخیره کن. تیک کنار آن وضعیت انجام را تغییر می‌دهد؛ روی عنوان بزن تا جزئیات را ویرایش کنی.'],['۱  عنوان و تاریخ','۲  ساعت، اولویت و تکرار','۳  ذخیره ← انجام شد ✓']],
  ['quick','plus','افزودن سریع','فکرت را به یک ثبت تبدیل کن',['روی + وسط نوار پایین بزن و مثلاً بنویس: «فردا ساعت ۹ صبح خرید نان».','پیش‌نمایش عنوان، تاریخ، ساعت و نوع ثبت را بخوان. برداشت برنامه را پیش از ثبت اصلاح کن.','برای هزینه بنویس «۲۵۰ هزار تومان بنزین». سپس «ثبت» را بزن؛ تاریخ مالی باید امروز یا گذشته باشد.'],['متن تو: فردا ساعت ۹ خرید نان','پیش‌نمایش: کار · فردا · ۰۹:۰۰','دکمهٔ ثبت']],
- ['timeline','clock','خط زمانی، صندوق و روال','روزت را تصویری ببین',['در صفحهٔ «امروز» از «فهرست» به «خط زمانی» برو. کارهایی که ساعت و مدت دارند به‌شکل بلوک دیده می‌شوند و فاصله‌های خالی روز نوشته می‌شود.','کاری که هنوز تاریخش معلوم نیست را بدون تاریخ بنویس؛ به «صندوق» می‌رود. از کارت صندوق با «امروز» یا «فردا» آن را به یک روز بفرست.','در «کارها ← روال‌ها» چند کار پشت سر هم بساز (مثل روال صبح) و با دکمهٔ «روال» در صفحهٔ امروز، همه را یک‌جا با ساعت به روز اضافه کن.'],['فهرست ↔ خط زمانی','صندوق → امروز / فردا','روال صبح → ۴ کار با ساعت']],
+ ['timeline','clock','خط زمانی، صندوق و روال','روزت را تصویری ببین',['در ظاهر «دفتر خودنگار»، صفحهٔ «امروز» را از «فهرست» به «خط زمانی» ببر. در ظاهر «Structured»، خط زمانی از ابتدا باز است و روزهای هفته را همان‌جا انتخاب می‌کنی. کارهای ساعت‌دار، مدتشان و فاصله‌های خالی روز را می‌بینی.','کاری که هنوز تاریخش معلوم نیست را بدون تاریخ بنویس؛ به «صندوق» می‌رود. از کارت صندوق با «امروز» یا «فردا» آن را به یک روز بفرست.','در «کارها ← روال‌ها» چند کار پشت سر هم بساز (مثل روال صبح) و با دکمهٔ «روال» در صفحهٔ امروز، همه را یک‌جا با ساعت به روز اضافه کن.'],['فهرست ↔ خط زمانی','صندوق → امروز / فردا','روال صبح → ۴ کار با ساعت']],
  ['focus','timer','تایمر تمرکز','یک کار در هر لحظه',['کنار هر کار باز، نماد ساعت را بزن یا در فرم کار «تمرکز» را انتخاب کن.','۲۵ دقیقه فقط روی همان کار کار کن؛ بعد ۵ دقیقه استراحت. زمان‌ها در صفحهٔ «تمرکز» قابل تغییرند.','در پایان هر دوره اعلان می‌آید. آمار زمان تمرکز امروز و هفته در صفحهٔ «تمرکز» دیده می‌شود.'],['شروع تمرکز','۲۵:۰۰ ← ۰۰:۰۰','استراحت ۵ دقیقه']],
  ['lists','book','فهرست‌ها، دفترچه و چاپ','چیزهای کوچکی که می‌مانند',['«فهرست‌های من» در بخش‌ها: کتاب‌ها و فیلم‌هایی که می‌خواهی، در حالشان هستی یا تمام کرده‌ای؛ با امتیاز و یادداشت.','در صفحهٔ شرح حال، هر روز یک «پرسش امروز» هست؛ چند خط جواب بده تا دفترچه‌ات کامل شود.','با دکمهٔ «چاپ» در صفحهٔ امروز، برنامهٔ روز یا هفته را در اندازهٔ A4 چاپ کن یا به PDF ذخیره کن.'],['کتاب: در حال خواندن','پرسش امروز ✎','چاپ A4 / PDF']],
  ['calendar','calendar','تقویم و قرارها','برای روزهایت جا باز کن',['از بخش «تقویم»، روز دلخواه را انتخاب کن تا برنامهٔ همان روز را ببینی.','برای قرار، جلسه، تولد یا رویداد از کنترل افزودن رویداد استفاده کن. تاریخ و ساعت را بررسی کن.','تکرار و یادآوری را در فرم تنظیم کن. برای تغییر رویداد، آن را باز و ویرایش کن.'],['تقویم شمسی','روز انتخاب‌شده → برنامهٔ روز','قرار / تولد / جلسه']],
@@ -6066,7 +6342,7 @@ const Guide=(()=>{
  ['mood','mood','حال روحی و قدردانی','جایی برای احساس و اتفاق‌های خوب',['در «حال روحی»، یکی از چهره‌ها را بزن؛ این کار همان لحظه حال را ثبت می‌کند.','روی «جزئیات» یا ثبت ایجادشده در «ثبت‌های امروز» بزن. پایین فرم، «سه چیز که بابتش قدردانم» را بنویس و ذخیره کن.','تب «سابقه» برای باز کردن و ویرایش ثبت‌های قبلی است. کارت «از دفتر قدردانی» فقط آخرین نوشته را نشان می‌دهد و دفتر جداگانه نیست.'],['حال روحی → انتخاب چهره','ثبت‌های امروز → باز کردن ثبت','سه چیز که بابتش قدردانم ✎']],
  ['review','chart','مرور هفته','مکث برای نگاه دوباره',['از بخش‌ها یا منوی دسکتاپ وارد «مرور هفته» شو.','آمار هفته را ببین و پرسش‌های مرور را بر اساس تجربهٔ خودت پاسخ بده.','به‌جای کامل بودن، یک تغییر کوچک برای هفتهٔ بعد انتخاب کن. داده‌های ناقص، تصویر کاملی از هفته نمی‌سازند.'],['هفتهٔ گذشته','چه چیزی خوب پیش رفت؟','قدم بعدی من']],
  ['assistant','sparkle','دستیار هوشمند','پرسیدن، بررسی کردن، تأیید کردن',['«دستیار هوشمند» را از صفحهٔ اصلی یا بخش‌ها باز کن. پیشنهادهایی مثل «امروزم را خلاصه کن» در حالت محلی کار می‌کنند.','برای ثبت بنویس «ثبت کن فردا ساعت ۹ صبح خرید نان». جزئیات را ببین و «تأیید و ثبت» را بزن؛ امکان برگرداندن همان ثبت هم هست.','حالت محلی مدل زبانی نیست. حالت آنلاین به سرور و کلید API نیاز دارد؛ از تنظیمات دستیار فعال می‌شود و ارسال خلاصهٔ دفتر فقط با اجازهٔ توست.'],['پیام تو','پیش‌نمایش ثبت','تأیید و ثبت ↔ برگرداندن']],
- ['appearance','sun','رنگ و چیدمان','دفتر به سلیقهٔ تو',['در تنظیمات ← رنگ و ظاهر، یکی از شش پالت را انتخاب کن؛ انتخاب خودکار ذخیره می‌شود.','حالت روشن، تیره یا خودکار، نمایش تصویرها و کاهش حرکت را به دلخواه تنظیم کن.','در تنظیمات ← بخش‌ها و صفحهٔ اصلی، بخش‌ها را روشن یا خاموش کن و ترتیب کارت‌ها را تغییر بده.'],['۶ پالت رنگی','روشن / تیره / خودکار','چیدمان کارت‌ها']],
+ ['appearance','sun','رنگ و چیدمان','دفتر به سلیقهٔ تو',['در شروع برنامه یا تنظیمات ← رنگ و ظاهر، ظاهر «دفتر خودنگار» یا «Structured» و یکی از شش پالت را انتخاب کن؛ پیش‌نمایش ترکیب را همان‌جا می‌بینی.','حالت روشن، تیره یا خودکار، نمایش تصویرها و کاهش حرکت را به دلخواه تنظیم کن.','در تنظیمات ← بخش‌ها و صفحهٔ اصلی، بخش‌ها را روشن یا خاموش کن و ترتیب کارت‌ها را تغییر بده.'],['۶ پالت رنگی','روشن / تیره / خودکار','چیدمان کارت‌ها']],
  ['notifications','bell','یادآوری‌ها','یادآوری با تنظیم درست',['در تنظیمات ← اعلان‌ها و یادآوری‌ها، ساعت‌ها و موارد دلخواه را تنظیم کن.','در فرم کار یا رویداد، زمان و فاصلهٔ یادآوری را بررسی کن. برای اعلان سیستم، مرورگر باید اجازه داشته باشد.','در نسخهٔ HTML، بررسی یادآوری‌ها هنگام باز بودن برنامه انجام می‌شود؛ با بسته بودن صفحه روی هشدار قطعی حساب نکن.'],['انتخاب موارد','زمان و اجازهٔ مرورگر','برنامه باز → بررسی یادآوری']],
  ['backup','download','پشتیبان و انتقال داده','از نوشته‌هایت یک نسخه داشته باش',['در تنظیمات ← پشتیبان‌گیری و بازگردانی، خروجی بگیر و فایل را در جای مطمئن نگه دار. امکان خروجی رمزدار هم وجود دارد.','قبل از تغییر مرورگر، دستگاه یا فایل برنامه پشتیبان بگیر. داده‌ها خودکار بین دستگاه‌ها همگام نمی‌شوند.','برای انتقال، فایل پشتیبان را در نسخهٔ مقصد وارد کن. بازگردانی داده‌های فعلی مقصد را جایگزین می‌کند؛ پشتیبان خودکار داخل مرورگر جای فایل جداگانه را نمی‌گیرد.'],['دفتر این دستگاه','خروجی پشتیبان → فایل شخصی','ورود فایل در مقصد']],
  ['privacy','lock','حریم خصوصی و شروع استفاده','آمادهٔ نوشتن هستی',['قفل ورود و پنهان کردن مبالغ در تنظیمات قرار دارند. پنهان کردن مبلغ، رمزگذاری اطلاعات نیست.','گفت‌وگوهای همراه داخل پشتیبان هم قرار می‌گیرند. قبل از دادن فایل پشتیبان به دیگران، محتوایش را در نظر بگیر.','این راهنما همیشه در تنظیمات ← راهنمای تصویری برنامه در دسترس است. هر فصل را جداگانه یا از ابتدا مرور کن.'],['قفل ورود','پنهان کردن مبالغ','تنظیمات → راهنمای تصویری']]
@@ -7201,12 +7477,132 @@ footer{margin-top:10px;color:#9aa293;font-size:10px;text-align:center}.tools{pos
     else { const d = v === 'day' ? today : J.addDays(today, 1); out('khodnegar-day-' + d, doc('برنامهٔ ' + J.fmt(d, 'short'), dayHtml(d))); }
   }
   App.act('print.open', () => open());
-  return { open, dayHtml, weekHtml, doc };
+  return { open, dayHtml, weekHtml, doc, out };
 })();
 
 /* v0.2.1: block pinch-zoom on iPhone (Safari ignores user-scalable=no) */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+/* Structured-inspired day planner. A separate view over the same stored records. */
+const StructuredHome = (() => {
+  let selected=null, scope='all';
+  const date=()=>selected||J.today();
+  const inScope=i=>(App.on('work')||i.scope!=='work')&&(scope==='all'||(i.scope||'personal')===scope);
+  const time=n=>U.fa(U.minToHM(Math.max(0,Math.min(1439,n))));
+  const colour=it=>{
+    const c=it.color;
+    return typeof c==='string'&&CSS.supports('color',c)&&!/[;"<>]/.test(c)?c:'var(--accent)';
+  };
+  function eventItems(iso){
+    const timed=Timeline.events(iso,scope==='all'?null:scope).map(it=>{
+      const e=S.events.find(e=>e.id===it.ref);
+      return {...it,scope:e?.scope||(e?.kind==='meeting'?'work':'personal')};
+    }).filter(inScope);
+    const untimed=App.on('calendar')||App.on('work')?S.events.filter(e=>(e.allDay||!e.time)&&!['birthday','anniversary'].includes(e.kind)&&Calendar.occursOn(e,iso)).map(e=>{
+      const [label,ic,col]=Calendar.KINDS[e.kind]||Calendar.KINDS.event;
+      return {key:'sev:'+e.id,mod:'calendar',ref:e.id,title:e.title,event:true,scope:e.scope||(e.kind==='meeting'?'work':'personal'),tIcon:ic,color:col,src:label,open:{a:'calendar.edit',data:{id:e.id}}};
+    }).filter(inScope):[];
+    return timed.concat(untimed);
+  }
+  function row(it,iso,block){
+    const c=colour(it),done=!!it.done;
+    const now=U.hmToMin(J.nowHM());
+    const active=block&&!done&&iso===J.today()&&now>=block.s&&now<block.e;
+    const attrs=it.open?`data-a="${it.open.a}" ${Object.entries(it.open.data||{}).map(([k,v])=>`data-${k}="${U.esc(v)}"`).join(' ')}`:'';
+    const title=U.esc(it.title),ic=it.tIcon||it.icon||'tasks';
+    const st=it.done==='mini'?'mini':done?'on':'';
+    const meta=[];
+    if(it.time)meta.push(`<bdi>${U.fa(it.time)}</bdi>`);
+    if(it.dur)meta.push(TaskX.durLabel(it.dur));
+    else if(it.time)meta.push('مدت تعیین نشده');
+    else meta.push(it.event?'تمام روز':'بدون ساعت');
+    if(it.src)meta.push(U.esc(it.src));
+    if(it.sub)meta.push(it.sub);
+    if(it.overdue)meta.push(`<span class="pill red">${U.esc(it.overdue)}</span>`);
+    if(block?.overlap)meta.push('<span class="pill amber">هم‌زمان</span>');
+    if(active)meta.push('<span class="pill mod">در حال انجام</span>');
+    if(it.done==='mini')meta.push('<span class="pill">حداقلی</span>');
+    if(it.done==='skip')meta.push('<span class="pill">رد شده</span>');
+    const tag=it.open?'button':'div';
+    return `<div class="sp-entry ${done?'done':''} ${active?'active':''}" style="--c:${c};--block-height:${block?Math.max(84,Math.min(150,(+it.dur||30)*.8)):74}px" data-entry="${U.esc(it.key||it.ref)}">
+      <div class="sp-time">${block?`<bdi>${time(block.s)}</bdi>${it.dur?`<small><bdi>${time(block.e)}</bdi></small>`:''}`:''}</div>
+      <span class="sp-node" aria-hidden="true">${icon(ic,16)}</span>
+      <article class="sp-card ${it.event?'event':''}"><${tag} class="sp-open" ${attrs} ${it.open?'type="button"':''}><b>${title}</b><span class="sp-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</span></${tag}>
+      ${it.focus&&!done?`<button type="button" class="icon-btn focus-go" data-a="focus.start" data-id="${U.esc(it.ref)}" aria-label="شروع تمرکز: ${title}">${icon('timer',17)}</button>`:''}
+      ${it.event?'':`<button type="button" class="ck ${st}" data-a="agenda.toggle" data-mod="${it.mod}" data-ref="${U.esc(it.ref)}" data-date="${iso}" aria-pressed="${done}" aria-label="${done?'برداشتن تیک':'انجام شد'}: ${title}">${icon('check',15)}</button>`}</article></div>`;
+  }
+  function nowHtml(){return `<div class="sp-now"><span>اکنون <bdi>${U.fa(J.nowHM())}</bdi></span></div>`;}
+  function timeline(iso,items){
+    const {xs}=Timeline.blocks(items);
+    xs.forEach(b=>{b.overlap=xs.some(o=>o!==b&&b.s<o.e&&o.s<b.e);});
+    const noTime=items.filter(i=>!i.time);
+    let out='';
+    if(xs.length){
+      let end=null,nowShown=false;
+      const now=iso===J.today()?U.hmToMin(J.nowHM()):null;
+      out='<div class="sp-timeline" aria-label="خط زمانی '+J.fmt(iso,'full')+'">';
+      xs.forEach(b=>{
+        if(end!==null&&b.s-end>=15){
+          out+=`<button type="button" class="sp-gap" data-a="structured.new" data-time="${U.minToHM(Math.min(end,1439))}" aria-label="افزودن کار در وقت آزاد از ${time(end)} تا ${time(b.s)}">${icon('plus',14)} ${TaskX.durLabel(b.s-end)} وقت آزاد</button>`;
+        }
+        if(now!==null&&!nowShown&&(b.s>=now||b.e>now)){out+=nowHtml();nowShown=true;}
+        out+=row(b.it,iso,b);end=Math.max(end||0,b.e);
+      });
+      if(now!==null&&!nowShown)out+=nowHtml();
+      out+='<div class="sp-end">برای خودت هم وقت بگذار.</div></div>';
+    }else out=`<div class="sp-empty"><span>${icon('sun',28)}</span><h3>برای روزت جا باز کن</h3><p>${noTime.length?'کارهای بدون ساعت پایین همین صفحه‌اند. با تعیین ساعت، برنامهٔ روزت را اینجا ببین.':'یک کار کوچک، یک قرار یا زمانی برای استراحت؛ برنامهٔ این روز از همین‌جا شروع می‌شود.'}</p><button type="button" class="btn primary" data-a="structured.new">${icon('plus',18)} افزودن کار</button></div>`;
+    if(noTime.length)out+=`<section class="sp-untimed"><h4>بدون ساعت · ${U.fa(noTime.length)} مورد</h4>${Agenda.sort(noTime).map(i=>row(i,iso)).join('')}</section>`;
+    return out;
+  }
+  function week(iso){
+    const start=J.addDays(iso,-J.wd(iso)),today=J.today();
+    const [y,m]=J.toJ(iso);
+    return `<div class="sp-week-box"><div class="sp-month"><button type="button" class="grow" data-a="structured.pick" aria-label="انتخاب تاریخ">${J.MONTHS[m-1]} ${U.fa(y)} ${icon('chevD',14)}</button>${iso!==today?'<button class="link" data-a="structured.today">امروز</button>':''}<button type="button" class="icon-btn" data-a="structured.week" data-v="-1" aria-label="هفتهٔ قبل">${icon('chevR',17)}</button><button type="button" class="icon-btn" data-a="structured.week" data-v="1" aria-label="هفتهٔ بعد">${icon('chevL',17)}</button></div><div class="sp-week" role="group" aria-label="روزهای هفته">${['ش','ی','د','س','چ','پ','ج'].map((label,i)=>{
+      const d=J.addDays(start,i),has=App.agenda(d).some(inScope)||eventItems(d).length;
+      return `<button type="button" class="sp-day ${d===iso?'selected':''} ${d===today?'today':''} ${has?'has-items':''} ${i===6?'friday':''}" data-a="structured.day" data-d="${d}" aria-label="${J.fmt(d,'full')}" aria-pressed="${d===iso}" ${d===today?'aria-current="date"':''}><span>${label}</span><b>${U.fa(J.toJ(d)[2])}</b><i></i></button>`;
+    }).join('')}</div></div>`;
+  }
+  function screen(){
+    const iso=date(),today=J.today(),isToday=iso===today;
+    if(!App.on('work'))scope='all';
+    const agenda=App.agenda(iso).filter(inScope),items=agenda.concat(eventItems(iso));
+    const counted=agenda.filter(i=>!i.noScore),done=counted.filter(i=>i.done).length,pct=U.pct(done,counted.length);
+    const view=S.settings.structuredView==='list'?'list':'timeline';
+    const inbox=TaskX.inboxItems(t=>(App.on('work')||t.scope!=='work'));
+    const hol=Holidays.get(iso);
+    const head=`<button type="button" class="icon-btn" data-a="inbox.open" aria-label="صندوق، ${U.fa(inbox.length)} کار بدون تاریخ">${icon('inbox',20)}</button><button type="button" class="icon-btn" data-a="nav.go" data-s="assistant" aria-label="دستیار هوشمند">${icon('sparkle',20)}</button><button type="button" class="icon-btn" data-a="nav.go" data-s="settings/appearance" aria-label="تغییر ظاهر و رنگ">${icon('sun',20)}</button>`;
+    const title=isToday?'امروز، به ریتم تو.':J.fmt(iso,'short');
+    let body=`<div class="sp-page"><section class="sp-heading"><div><span class="sp-eyebrow">${icon('sun',15)} ${isToday?'یک روز، یک شروع تازه':J.rel(iso)}</span><h2>${title}</h2><p>${J.fmt(iso,'full')}${isToday&&S.settings.name?' · '+U.esc(S.settings.name):''}</p></div>${Charts.ring(pct,{size:62,stroke:4,color:'var(--accent)',label:U.fa(done)+'/'+U.fa(counted.length)})}</section><div class="sp-layout"><div class="sp-primary">${week(iso)}
+      <div class="sp-filters">${App.on('work')?`<div class="seg" role="group" aria-label="بخش کارها">${[['all','همه'],['personal','شخصی'],['work','کاری']].map(([v,l])=>`<button class="${scope===v?'on':''}" data-a="structured.scope" data-v="${v}" aria-pressed="${scope===v}">${l}</button>`).join('')}</div>`:''}<div class="view-switch" role="group" aria-label="نوع نمایش"><button class="${view==='timeline'?'on':''}" data-a="structured.view" data-v="timeline" aria-pressed="${view==='timeline'}">${icon('clock',15)} خط زمانی</button><button class="${view==='list'?'on':''}" data-a="structured.view" data-v="list" aria-pressed="${view==='list'}">${icon('list',15)} فهرست</button></div></div>
+      <div class="sp-agenda-head"><h3>برنامهٔ ${isToday?'امروز':'این روز'}</h3><span>${U.fa(done)} از ${U.fa(counted.length)} انجام شده</span></div>
+      ${hol.length?`<p class="sp-holiday">${hol.map(h=>U.esc(h.title)).join(' · ')}</p>`:''}
+      ${view==='timeline'?timeline(iso,items):items.length?`<div class="sp-untimed">${Agenda.sort(items).map(i=>row(i,iso,i.time?{s:U.hmToMin(i.time),e:U.hmToMin(i.time)+(+i.dur||30)}:null)).join('')}</div>`:timeline(iso,[])}
+      <button type="button" class="btn primary block" data-a="structured.new">${icon('plus',19)} ${scope==='work'?'برنامهٔ کاری جدید':'کار جدید برای این روز'}</button>
+      <div class="sp-tools"><button type="button" class="btn ghost" data-a="routine.apply" data-d="${iso}">${icon('repeat',16)} افزودن روال</button><button type="button" class="btn ghost" data-a="dayplan.open" data-d="${iso}">${icon('sparkle',16)} چیدن روز</button><button type="button" class="btn ghost" data-a="structured.print">${icon('printer',16)} چاپ روز</button></div></div>
+      <aside class="sp-secondary" aria-label="ابزارهای روز"><section class="sp-side-card"><div class="sp-side-head"><span class="li-ic">${icon('inbox',18)}</span><b class="grow">صندوق</b><span class="pill">${U.fa(inbox.length)}</span></div><p>فکرهایی که هنوز زمانشان نرسیده، اینجا منتظرت می‌مانند.</p>
+      ${inbox.slice(0,3).map(t=>`<div class="sp-inbox-row"><b>${U.esc(t.title)}</b><button type="button" class="icon-btn" data-a="inbox.pick" data-id="${U.esc(t.id)}" aria-label="زمان‌بندی ${U.esc(t.title)}">${icon('calendar',17)}</button></div>`).join('')}
+      <button type="button" class="btn ghost" data-a="inbox.open">${inbox.length?'دیدن صندوق':'ثبت یک فکر تازه'} ${icon('chevL',15)}</button></section>
+      <section class="sp-side-card"><div class="sp-side-head"><span class="li-ic">${icon('timer',18)}</span><b>یک کار در هر لحظه</b></div><p>کمی تمرکز، بعد یک نفس تازه. از یک بازهٔ کوتاه شروع کن.</p><button type="button" class="btn ghost" data-a="nav.go" data-s="focus">شروع تمرکز ${icon('chevL',15)}</button></section>`;
+    const cards=S.settings.homeOrder.filter(id=>App.onHome(id)&&App.mods[id]?.card).map(id=>{try{return App.mods[id].card().replace('class="mcard',`data-module="${id}" class="mcard`);}catch(e){console.error(e);return '';}}).join('');
+    if(cards||S.settings.cycleOn)body+=`<details class="sp-side-card sp-today-cards"><summary>زندگی امروز در یک نگاه ${icon('chevD',17)}</summary>${Cycle.homeCard()}<div class="cards">${cards}</div><button class="link" data-a="nav.go" data-s="settings/modules">چیدمان بخش‌ها</button></details>`;
+    if(isToday)body+=Review.prompt()||'';
+    body+='</aside></div></div>';
+    return {title:'خودنگار',sub:'روزت را روشن ببین',color:'var(--accent)',head,body};
+  }
+  App.act('structured.day',d=>{selected=d.d===J.today()?null:d.d;App.refresh();});
+  App.act('structured.today',()=>{selected=null;App.refresh();});
+  App.act('structured.week',d=>{selected=J.addDays(date(),+d.v*7);App.refresh();});
+  App.act('structured.pick',async()=>{const d=await UI.pickDate(date(),{allowEmpty:false,title:'کدام روز؟'});if(d){selected=d===J.today()?null:d;App.refresh();}});
+  App.act('structured.scope',d=>{if(['all','personal','work'].includes(d.v)){scope=d.v;App.refresh();}});
+  App.act('structured.view',d=>{S.settings.structuredView=d.v==='list'?'list':'timeline';DB.save('settings');App.refresh();});
+  App.act('structured.new',d=>Tasks.edit(null,{date:date(),scope:scope==='work'?'work':'personal',time:d.time||''}));
+  App.act('structured.print',()=>Print.out('khodnegar-day-'+date(),Print.doc('برنامهٔ '+J.fmt(date(),'short'),Print.dayHtml(date()))));
+  // Update the current-time marker only when the day view is visible and no form is open.
+  setInterval(()=>{if(window.S?.settings?.onboarded&&Appearance.layout().id==='structured'&&App.cur().s==='home'&&date()===J.today()&&!document.hidden&&!document.querySelector('.onb,.lockscr,.sheet-wrap'))App.refresh();},60000);
+  return {screen};
+})();
+
 
 /* Khodnegar — boot */
 (function boot() {
