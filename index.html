@@ -1,6 +1,15 @@
 <!doctype html>
 <!-- Khodnegar (خودنگار) v0.2.0 — personal life app, single-file HTML build
      Changelog:
+     0.2.1  1405/08/07  Feedback round 2 (12 items): no zoom on iPhone (viewport + 16px inputs + pinch block);
+                        «در اختیار شخص دیگری»; «از ذهنت بیرون بیار»; work items are «برنامهٔ کاری» (no «کار کاری»);
+                        mood: «سال در پیکسل‌ها» -> «رنگ حال در سال», «بینش‌ها» -> «چه حالم را بهتر می‌کند» with a
+                        plain explanation; day ring = done/total (was weighted, e.g. 3 of 4 showed 71%) and the today
+                        list tells you when items are left in the other tab; companion renamed «دستیار هوشمند» with a
+                        sparkle (AI) look; chat in its own framed panel, separate from the suggestions; assistant answers
+                        «تولد علی کی است؟» / «… کی است؟» from the calendar; phone-calendar notice moved to
+                        Settings > Notifications; goals have a from-to date range; new finance calendar tab (installments,
+                        cheques, bills, debts) and these reminders left the main calendar.
      0.2.0  1405/08/06  Feedback round 1 (16 items): mood face opens the «شرح حال» page at once; bank SMS permission flow
                         (Android 13+ restricted settings guide) and new SMS parser (amount line only, account numbers ignored,
                         Arabic ي/ك); finance numbers shrink to fit; categories tab (add/edit/delete, new category from the
@@ -18,7 +27,7 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#F7F4EC">
 <meta name="description" content="خودنگار — برنامهٔ جامع شخصی: کارها، اهداف، تقویم شمسی، مالی، غذا، ورزش و حال روحی">
 <title>خودنگار</title>
@@ -657,6 +666,27 @@ main[data-screen=assistant]{gap:18px}.companion-intro{display:flex;align-items:c
 .mcard .big { white-space: nowrap; overflow: hidden; direction: ltr; text-align: right; }
 .sms-perm { display: flex; gap: 10px; align-items: flex-start; }
 .guide-steps { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ---- v0.2.1: no zoom on iPhone (iOS zooms into inputs smaller than 16px) ---- */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+@media (pointer: coarse) { input:not([type=checkbox]):not([type=radio]), select, textarea, .inp, .chat-composer textarea { font-size: 16px !important; } }
+/* ---- v0.2.1: smart assistant look ---- */
+.companion-entry.ai { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), color-mix(in srgb, #7B5CC4 12%, var(--surface))); border-color: color-mix(in srgb, #7B5CC4 30%, var(--line)); }
+.ai-ic { background: linear-gradient(135deg, var(--accent), #7B5CC4) !important; color: #fff !important; box-shadow: 0 4px 14px color-mix(in srgb, #7B5CC4 30%, transparent); }
+.ai-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, #7B5CC4 16%, var(--surface)); color: #6A4FB0; vertical-align: middle; margin-inline-start: 6px; }
+:root[data-theme=dark] .ai-badge { color: #C9B8F5; }
+.assistant-suggest-box { display: flex; flex-direction: column; gap: 8px; }
+.assistant-suggest-box > .sug-h { font-size: 12.5px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.chat-panel { display: flex; flex-direction: column; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); margin-top: 6px; }
+.chat-panel-h { display: flex; align-items: center; gap: 8px; padding: 11px 14px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-bottom: 1px solid var(--line); }
+.chat-panel-h b { font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--accent); }
+.chat-panel-h .assistant-status { margin-inline-start: auto; }
+.chat-panel .assistant-chat { background: var(--bg); padding: 14px 12px; max-height: 52vh; min-height: 160px; }
+.chat-panel .chat-composer { position: static; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; margin: 0; }
+.chat-panel .chat-message.bot { background: var(--surface); }
+/* ---- v0.2.1: finance calendar ---- */
+.fin-cal-sum { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.fin-cal-sum b { color: var(--fg); }
 </style>
 <body>
 <div id="root"></div>
@@ -1947,7 +1977,7 @@ const Charts = (() => {
 
 /* ---- js/core/app.js ---- */
 /* Khodnegar — application shell: modules, navigation, actions, rendering */
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.2.1';
 const MODULE_ORDER = ['tasks', 'goals', 'work', 'calendar', 'finance', 'food', 'workout', 'mood'];
 const App = (() => {
   const mods = {};
@@ -2015,7 +2045,7 @@ const App = (() => {
     if (!box) { box = document.createElement('nav'); box.id='desktopNav'; box.className='desktop-nav'; box.setAttribute('aria-label','ناوبری دسکتاپ'); document.body.appendChild(box); }
     const here = cur().s.split('/')[0];
     const item=(id,ic,label)=>`<button data-a="nav.go" data-s="${id}" class="${here===id?'on':''}" aria-current="${here===id?'page':'false'}">${icon(ic,20)}<span>${label}</span></button>`;
-    box.innerHTML='<div class="desktop-brand">خودنگار</div><p>هر روز، کمی نزدیک‌تر به خودت</p>'+`<button class="nav-add" data-a="qa.open">${icon('plus',20)} ثبت سریع</button>`+item('home','home','امروز')+item('assistant','message','همراه خودنگار')+'<span class="nav-caption">بخش‌های زندگی</span>'+enabledMods().map(m=>item(m.id,m.icon,m.title)).join('')+'<span class="nav-caption">نگاه دوباره</span>'+item('review','chart','مرور هفته')+item('settings','settings','تنظیمات')+InkScenes.navNote();
+    box.innerHTML='<div class="desktop-brand">خودنگار</div><p>هر روز، کمی نزدیک‌تر به خودت</p>'+`<button class="nav-add" data-a="qa.open">${icon('plus',20)} ثبت سریع</button>`+item('home','home','امروز')+item('assistant','sparkle','دستیار هوشمند')+'<span class="nav-caption">بخش‌های زندگی</span>'+enabledMods().map(m=>item(m.id,m.icon,m.title)).join('')+'<span class="nav-caption">نگاه دوباره</span>'+item('review','chart','مرور هفته')+item('settings','settings','تنظیمات')+InkScenes.navNote();
   }
   /* ---------- events ---------- */
   function bind() {
@@ -2658,7 +2688,7 @@ const Tasks = (() => {
     const vals = Object.assign({}, t, { reminder: t.reminder === null || t.reminder === undefined ? '' : String(t.reminder), priority: t.priority || 0 });
     if (vals.rec) vals.rec = Object.assign({}, vals.rec);
     UI.formSheet({
-      title: isNew ? 'کار جدید' : 'ویرایش کار', fields: f.filter(Boolean), vals,
+      title: t.scope === 'work' ? (isNew ? 'برنامهٔ کاری جدید' : 'ویرایش برنامهٔ کاری') : (isNew ? 'کار جدید' : 'ویرایش کار'), fields: f.filter(Boolean), vals,
       after: (frm) => {
         const box = frm.querySelector('[data-subs]');
         const draw = () => { const ab = frm.querySelector('[data-add-sub]'); if (ab) ab.innerHTML = icon('plus', 14) + (subs.length ? ' قدم دیگر' : ' قدم‌ها (تقسیم کار به چند قدم کوچک)'); box.innerHTML = subs.map((s, i) => `<div class="row sub-row"><button type="button" class="ck ${s.done ? 'on' : ''}" data-sd="${i}" aria-label="تیک زیرکار">${icon('check', 14)}</button><input value="${U.esc(s.t)}" data-si="${i}" placeholder="قدم ${U.fa(i + 1)}"><button type="button" class="icon-btn" data-sx="${i}" aria-label="حذف زیرکار">${icon('close', 16)}</button></div>`).join(''); };
@@ -2671,7 +2701,7 @@ const Tasks = (() => {
         Object.assign(t, v, { subtasks: subs.filter((s) => s.t.trim()), priority: +v.priority || 0, reminder: v.reminder === '' ? null : +v.reminder, scope: v.scope || 'personal' });
         if (t.rec) { t.rec.start = t.date || J.today(); if (!t.date) t.date = t.rec.start; }
         if (isNew) S.tasks.push(t);
-        DB.save('tasks'); App.refresh(); App.toast(isNew ? 'کار اضافه شد' : 'ذخیره شد');
+        DB.save('tasks'); App.refresh(); App.toast(isNew ? (t.scope === 'work' ? 'برنامهٔ کاری اضافه شد' : 'کار اضافه شد') : 'ذخیره شد');
       },
       onDelete: isNew ? null : () => { S.tasks = S.tasks.filter((x) => x.id !== t.id); DB.save('tasks'); App.refresh(); App.toast('کار حذف شد'); },
     });
@@ -2727,7 +2757,7 @@ const Score = (() => {
     if (!items.length) return { pct: 0, done: 0, total: 0, pts: 0 };
     let pts = 0, max = 0, done = 0;
     items.forEach((i) => { const w = i.weight || 1; max += w * 10; if (i.done === 'mini') { pts += w * 6; done++; } else if (i.done) { pts += w * 10; done++; } });
-    return { pct: Math.round((pts / max) * 100), done, total: items.length, pts };
+    return { pct: Math.round((done / items.length) * 100), done, total: items.length, pts, weighted: Math.round((pts / max) * 100) };
   }
   let last = 0;
   function cheer() { const n = Date.now(); if (n - last < 1500) return; last = n; if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) { /* no-op */ } }
@@ -2849,8 +2879,9 @@ const Goals = (() => {
     return [
       { k: 'title', label: 'هدف', req: true, ph: 'مثلاً کم کردن ۵ کیلو وزن تا عید' },
       App.on('work') ? { k: 'scope', label: 'نوع هدف', type: 'chips', opts: [['personal', 'شخصی'], ['work', 'کاری']] } : null,
-      { k: 'area', label: 'حوزهٔ زندگی', type: 'select', opts: S.settings.areas.map((a) => [a, a]), half: true },
-      { k: 'deadline', label: 'مهلت', type: 'date', half: true },
+      { k: 'area', label: 'حوزهٔ زندگی', type: 'select', opts: S.settings.areas.map((a) => [a, a]) },
+      { k: 'start', label: 'از تاریخ', type: 'date', half: true },
+      { k: 'deadline', label: 'تا تاریخ', type: 'date', half: true },
       { k: 'why', label: 'چرا این هدف برایم مهم است؟', type: 'textarea', rows: 2, hint: 'در روزهای بی‌انگیزگی همین جمله را می‌بینید.' },
       { k: 'hasMetric', label: 'هدف عددی دارد', type: 'toggle', hint: 'مثل وزن، پس‌انداز یا تعداد کتاب' },
       { k: 'unit', label: 'واحد', ph: 'کیلوگرم', half: true },
@@ -2863,7 +2894,7 @@ const Goals = (() => {
     const isNew = !g;
     g = g || Object.assign({ id: U.uid(), title: '', scope: 'personal', area: S.settings.areas[0], why: '', deadline: J.addDays(J.today(), 90), metric: null, milestones: [], status: 'active', color: UI.COLORS[S.goals.length % UI.COLORS.length], created: J.today(), log: [] }, preset);
     const f = goalFields().filter(Boolean);
-    const vals = Object.assign({}, g, { hasMetric: !!g.metric, unit: g.metric ? g.metric.unit : '', mstart: g.metric ? g.metric.start : null, mtarget: g.metric ? g.metric.target : null });
+    const vals = Object.assign({}, g, { start: g.start || g.created || J.today(), hasMetric: !!g.metric, unit: g.metric ? g.metric.unit : '', mstart: g.metric ? g.metric.start : null, mtarget: g.metric ? g.metric.target : null });
     UI.formSheet({
       title: isNew ? 'هدف جدید' : 'ویرایش هدف', fields: f, vals,
       after: (frm) => {
@@ -2871,7 +2902,8 @@ const Goals = (() => {
         frm.querySelector('[name=hasMetric]').addEventListener('change', sync); sync();
       },
       onSave: (v) => {
-        Object.assign(g, { title: v.title, scope: v.scope || 'personal', area: v.area, deadline: v.deadline, why: v.why, color: v.color });
+        if (v.start && v.deadline && v.start > v.deadline) { App.toast('«از تاریخ» باید پیش از «تا تاریخ» باشد'); return false; }
+        Object.assign(g, { title: v.title, scope: v.scope || 'personal', area: v.area, start: v.start || g.start || g.created, deadline: v.deadline, why: v.why, color: v.color });
         if (v.hasMetric) {
           const cur = g.metric ? g.metric.current : v.mstart;
           g.metric = { unit: v.unit || '', start: v.mstart ?? 0, target: v.mtarget ?? 0, current: cur ?? v.mstart ?? 0 };
@@ -2939,7 +2971,7 @@ const Goals = (() => {
     const left = g.deadline ? J.diff(g.deadline, J.today()) : null;
     let body = `<div class="card" style="--mod:${g.color}"><div class="row">${Charts.ring(pr, { size: 76, stroke: 8, color: g.color, label: U.fa(pr) + '٪', sub: 'پیشرفت' })}
       <div class="grow stack" style="gap:4px"><span class="pill mod">${U.esc(g.area || '')}${g.scope === 'work' ? ' · کاری' : ''}</span>
-      ${g.deadline ? `<span class="small ${left < 0 ? 'danger-t' : 'muted'}">مهلت: ${J.fmt(g.deadline)} (${left < 0 ? 'گذشته' : U.fa(left) + ' روز مانده'})</span>` : ''}
+      ${g.deadline || (g.start || g.created) ? `<span class="small ${left !== null && left < 0 ? 'danger-t' : 'muted'}">${(g.start || g.created) ? 'از ' + J.fmt((g.start || g.created)) + ' ' : ''}${g.deadline ? 'تا ' + J.fmt(g.deadline) + ' (' + (left < 0 ? 'مهلت گذشته' : U.fa(left) + ' روز مانده') + ')' : ''}${(g.start || g.created) && (g.start || g.created) > J.today() ? ' · شروع ' + J.rel((g.start || g.created)) : ''}</span>` : ''}
       ${g.why ? `<p class="small">«${U.esc(g.why)}»</p>` : ''}</div></div></div>`;
     if (g.metric) {
       const m = g.metric;
@@ -3029,27 +3061,27 @@ const Work = (() => {
   }
   function screen() {
     const today = J.today();
-    let body = UI.seg('work.tab', tab, [['today', 'امروز'], ['tasks', 'کارها'], ['projects', 'پروژه‌ها'], ['goals', 'اهداف'], ['meet', 'جلسات']]);
+    let body = UI.seg('work.tab', tab, [['today', 'امروز'], ['tasks', 'برنامه‌ها'], ['projects', 'پروژه‌ها'], ['goals', 'اهداف'], ['meet', 'جلسات']]);
     if (tab === 'today') {
       const items = Agenda.sort(App.agenda(today).filter((i) => i.scope === 'work'));
       const done = items.filter((i) => i.done).length;
-      body += `<div class="card row"><div class="grow"><b>کارهای کاری امروز</b><p class="small muted">${U.fa(done)} از ${U.fa(items.length)} انجام شد</p></div>${Charts.ring(U.pct(done, items.length), { size: 52, stroke: 6, color: C, label: U.fa(U.pct(done, items.length)) + '٪' })}</div>`;
+      body += `<div class="card row"><div class="grow"><b>برنامه‌های کاری امروز</b><p class="small muted">${U.fa(done)} از ${U.fa(items.length)} انجام شد</p></div>${Charts.ring(U.pct(done, items.length), { size: 52, stroke: 6, color: C, label: U.fa(U.pct(done, items.length)) + '٪' })}</div>`;
       const mt = meetingsBetween(today, today);
       if (mt.length) body += UI.sec('جلسات امروز', `<div class="list">${mt.map(({ e, d }) => Calendar.eventRow(e, d)).join('')}</div>`);
-      body += items.length ? `<div class="list">${items.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : UI.empty('briefcase', 'برای امروز کار کاری ثبت نشده.');
+      body += items.length ? `<div class="list">${items.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : UI.empty('briefcase', 'برای امروز برنامهٔ کاری ثبت نشده.');
       const m = meetingsBetween(J.addDays(today, 1), J.addDays(today, 7));
       if (m.length) body += UI.sec('جلسات هفتهٔ پیش رو', `<div class="list">${m.slice(0, 5).map(({ e, d }) => Calendar.eventRow(e, d)).join('')}</div>`);
-      body += UI.fab('tasks.new', 'کار کاری جدید', 'data-scope="work"');
+      body += UI.fab('tasks.new', 'برنامهٔ کاری جدید', 'data-scope="work"');
     } else if (tab === 'tasks') {
       body += Tasks && App.mods.tasks ? '' : '';
       const open = S.tasks.filter((t) => t.scope === 'work' && (Tasks.isRec(t) || !t.done));
       const byProj = U.groupBy(open, (t) => t.projectId || '');
-      if (!open.length) body += UI.empty('tasks', 'کار کاری بازی ندارید.');
+      if (!open.length) body += UI.empty('tasks', 'برنامهٔ کاری بازی ندارید.');
       Object.entries(byProj).forEach(([pid, ts]) => {
         const p = P(pid);
         body += UI.sec(p ? U.esc(p.title) : 'بدون پروژه', `<div class="list">${ts.map((t) => { const d = Tasks.isRec(t) ? (Rec.next(Tasks.recOf(t), today) || today) : (t.date || today); const it = Tasks.item({ t, done: Tasks.doneOn(t, d) }, d); if (t.date) it.sub = J.rel(d) + (it.sub ? ' · ' + it.sub : ''); return Agenda.itemHtml(it, d); }).join('')}</div>`);
       });
-      body += UI.fab('tasks.new', 'کار کاری جدید', 'data-scope="work"');
+      body += UI.fab('tasks.new', 'برنامهٔ کاری جدید', 'data-scope="work"');
     } else if (tab === 'projects') {
       const ps = S.projects.slice().sort(U.by((p) => ({ active: 0, hold: 1, done: 2 }[p.status])));
       body += ps.length ? `<div class="list">${ps.map((p) => { const pr = projProgress(p); const n = S.tasks.filter((t) => t.projectId === p.id && !t.done).length; return `<button class="li" data-a="nav.go" data-s="work/project" data-p='${JSON.stringify({ id: p.id })}' style="--c:${p.color}"><span class="li-ic">${icon('folder')}</span><div class="li-t"><b>${U.esc(p.title)}</b><small><span>${{ active: 'در جریان', hold: 'متوقف', done: 'تمام‌شده' }[p.status]}</span><span>${U.fa(n)} کار باز</span>${p.deadline ? `<span>مهلت ${J.fmt(p.deadline, 'short')}</span>` : ''}</small>${UI.prog(pr, p.color)}</div></button>`; }).join('')}</div>` : UI.empty('folder', 'پروژه‌ای ثبت نشده. کارهای کاری را زیر پروژه‌ها دسته‌بندی کنید.');
@@ -3075,13 +3107,13 @@ const Work = (() => {
     const prog = projProgress(pr);
     let body = `<div class="card row" style="--mod:${pr.color}">${Charts.ring(prog, { size: 64, color: pr.color, label: U.fa(prog) + '٪' })}<div class="grow"><b>${{ active: 'در جریان', hold: 'متوقف', done: 'تمام‌شده' }[pr.status]}</b>${pr.deadline ? `<p class="small muted">مهلت: ${J.fmt(pr.deadline)}</p>` : ''}${pr.note ? `<p class="small">${U.esc(pr.note)}</p>` : ''}</div></div>`;
     const row = (t) => { const d = t.date || today; return Agenda.itemHtml(Object.assign(Tasks.item({ t, done: Tasks.doneOn(t, d) }, d), { sub: t.date ? J.rel(t.date) : 'بدون تاریخ' }), d); };
-    body += UI.sec('کارهای باز', open.length ? `<div class="list">${open.map(row).join('')}</div>` : '<p class="muted small">کار بازی نیست.</p>');
+    body += UI.sec('برنامه‌های باز', open.length ? `<div class="list">${open.map(row).join('')}</div>` : '<p class="muted small">برنامهٔ بازی نیست.</p>');
     if (done.length) body += UI.sec('انجام‌شده', `<div class="list">${done.map(row).join('')}</div>`);
-    body += UI.fab('work.projTask', 'کار جدید در پروژه', `data-id="${pr.id}"`);
+    body += UI.fab('work.projTask', 'برنامهٔ کاری جدید در پروژه', `data-id="${pr.id}"`);
     return { title: pr.title, color: pr.color, body, head: `<button class="icon-btn" data-a="work.editProject" data-id="${pr.id}" aria-label="ویرایش پروژه">${icon('edit')}</button>` };
   }
   App.mod('work', {
-    title: 'کار', icon: 'briefcase', c: C, desc: 'کارهای کاری جدا، پروژه‌ها، اهداف کاری و جلسات',
+    title: 'کار', icon: 'briefcase', c: C, desc: 'برنامه‌های کاری، پروژه‌ها، اهداف کاری و جلسات',
     screens: { main: screen, project: projectScreen },
     agenda: () => [],
     card() {
@@ -3089,7 +3121,7 @@ const Work = (() => {
       const items = App.agenda(today).filter((i) => i.scope === 'work');
       const done = items.filter((i) => i.done).length;
       const next = meetingsBetween(today, J.addDays(today, 7)).find(({ e, d }) => d > today || !e.time || e.time >= J.nowHM());
-      return `<button class="mcard" data-a="nav.go" data-s="work" style="--c:${C}"><div class="mcard-h">${icon('briefcase', 16)}<span class="grow">کار</span></div><div class="big">${U.fa(done)}<small class="muted">/${U.fa(items.length)}</small></div><p class="small muted">کار کاری امروز</p>${next ? `<p class="small">${icon('meeting', 13)} ${U.esc(next.e.title)} · ${J.rel(next.d)} ${next.e.time ? U.fa(next.e.time) : ''}</p>` : ''}</button>`;
+      return `<button class="mcard" data-a="nav.go" data-s="work" style="--c:${C}"><div class="mcard-h">${icon('briefcase', 16)}<span class="grow">کار</span></div><div class="big">${U.fa(done)}<small class="muted">/${U.fa(items.length)}</small></div><p class="small muted">برنامهٔ کاری امروز</p>${next ? `<p class="small">${icon('meeting', 13)} ${U.esc(next.e.title)} · ${J.rel(next.d)} ${next.e.time ? U.fa(next.e.time) : ''}</p>` : ''}</button>`;
     },
     acts: {
       tab: (d) => { tab = d.v; App.refresh(); },
@@ -3197,12 +3229,13 @@ const Calendar = (() => {
   /* paper-calendar month page: big Jalali day, small Gregorian + Hijri, Fridays shaded, event titles in the cells */
   const G_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const WD_EN = ['Sat.', 'Sun.', 'Mon.', 'Tue.', 'Wed.', 'Thu.', 'Fri.'];
-  function monthGrid(y, m) {
+  function monthGrid(y, m, o = {}) {
     const first = J.fromJ(y, m, 1), len = J.monthLen(y, m), lead = J.wd(first), today = J.today();
     const a = first, b = J.monthEnd(y, m);
-    const evDays = {};
-    S.events.forEach((e) => occurrences(e, a, b).forEach((d) => { (evDays[d] = evDays[d] || []).push({ t: e.title || (e.person || ''), c: KINDS[e.kind || 'event'][2] }); }));
-    (Platform.calendar.cached || []).forEach((x) => { if (x.date >= a && x.date <= b) (evDays[x.date] = evDays[x.date] || []).push({ t: x.title, c: 'var(--c-cal)' }); });
+    const selD = o.sel || sel, selA = o.selAct || 'calendar.sel', monA = o.monthAct || 'calendar.month';
+    const evDays = o.marks ? o.marks(a, b) : {};
+    if (!o.marks) S.events.forEach((e) => occurrences(e, a, b).forEach((d) => { (evDays[d] = evDays[d] || []).push({ t: e.title || (e.person || ''), c: KINDS[e.kind || 'event'][2] }); }));
+    if (!o.marks) (Platform.calendar.cached || []).forEach((x) => { if (x.date >= a && x.date <= b) (evDays[x.date] = evDays[x.date] || []).push({ t: x.title, c: 'var(--c-cal)' }); });
     const g1 = first.split('-').map(Number), g2 = b.split('-').map(Number);
     const gHead = g1[1] === g2[1] ? `${G_MONTHS[g1[1] - 1]} ${g1[0]}` : `${G_MONTHS[g1[1] - 1]}${g1[0] !== g2[0] ? ' ' + g1[0] : ''} / ${G_MONTHS[g2[1] - 1]} ${g2[0]}`;
     const h1 = Holidays.hijriIR(first), h2 = Holidays.hijriIR(b);
@@ -3215,9 +3248,9 @@ const Calendar = (() => {
       const g = iso.split('-').map(Number);
       const h = Holidays.hijriIR(iso);
       const evs = evDays[iso] || [];
-      const tasksN = App.on('tasks') ? Tasks.forDay(iso).filter((x) => !x.overdue).length : 0;
+      const tasksN = !o.marks && App.on('tasks') ? Tasks.forDay(iso).filter((x) => !x.overdue).length : 0;
       const evHtml = evs.slice(0, 2).map((x) => `<span class="pc-ev" style="--dc:${x.c}">${U.esc(x.t)}</span>`).join('') + (evs.length > 2 ? `<span class="pc-more">+${U.fa(evs.length - 2)}</span>` : '');
-      cells += `<button class="pc-d ${J.wd(iso) === 6 ? 'fri' : ''} ${hol ? 'hol' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''}" data-a="calendar.sel" data-d="${iso}" aria-label="${J.fmt(iso, 'full')}${hol ? ' تعطیل' : ''}">
+      cells += `<button class="pc-d ${J.wd(iso) === 6 ? 'fri' : ''} ${hol ? 'hol' : ''} ${iso === today ? 'today' : ''} ${iso === selD ? 'sel' : ''}" data-a="${selA}" data-d="${iso}" aria-label="${J.fmt(iso, 'full')}${hol ? ' تعطیل' : ''}">
         <span class="pc-top"><span class="pc-n">${U.fa(d)}</span><span class="pc-sub"><i dir="ltr">${g[2]}</i><i>${h ? U.fa(h.d) : ''}</i></span></span>${evHtml}${tasksN ? `<span class="pc-tk" aria-label="${U.fa(tasksN)} کار">${U.fa(tasksN)} کار</span>` : ''}</button>`;
     }
     const tail = (7 - ((lead + len) % 7)) % 7;
@@ -3227,7 +3260,7 @@ const Calendar = (() => {
         <div class="pc-meta"><span dir="ltr">${gHead}</span><span>${hHead}</span></div>
         <div class="pc-mnum">${U.fa(String(m).padStart(2, '0'))}</div>
       </div>
-      <div class="pc-nav"><button class="icon-btn" data-a="calendar.month" data-v="-1" aria-label="ماه قبل">${icon('chevR')}</button>${(() => { const [ty, tm] = J.toJ(today); return ty === y && tm === m ? '' : `<button class="btn sm ghost" data-a="calendar.sel" data-d="${today}">برو به امروز</button>`; })()}<button class="icon-btn" data-a="calendar.month" data-v="1" aria-label="ماه بعد">${icon('chevL')}</button></div>
+      <div class="pc-nav"><button class="icon-btn" data-a="${monA}" data-v="-1" aria-label="ماه قبل">${icon('chevR')}</button>${(() => { const [ty, tm] = J.toJ(today); return ty === y && tm === m ? '' : `<button class="btn sm ghost" data-a="${selA}" data-d="${today}">برو به امروز</button>`; })()}<button class="icon-btn" data-a="${monA}" data-v="1" aria-label="ماه بعد">${icon('chevL')}</button></div>
       <div class="pc-grid">${cells}</div></div>`;
   }
   /* occasions of the viewed month (official holidays + well-known days + the user's birthdays) and the month note */
@@ -3253,7 +3286,7 @@ const Calendar = (() => {
     if (vy === null) [vy, vm] = J.toJ(sel);
     const hol = Holidays.get(sel);
     const evs = eventsOn(sel);
-    const items = Agenda.sort(App.agenda(sel));
+    const items = Agenda.sort(App.agenda(sel).filter((i) => i.mod !== 'finance'));
     let body = monthGrid(vy, vm);
     const gd = sel.split('-').map(Number);
     const hs = Holidays.hijriIR(sel);
@@ -3262,7 +3295,6 @@ const Calendar = (() => {
     body += UI.sec('رویدادها', evs.length ? `<div class="list">${evs.map((e) => eventRow(e, sel)).join('')}</div>` : '<p class="muted small">رویدادی ثبت نشده.</p>', `<button class="link" data-a="calendar.newEvent">${icon('plus', 16)} رویداد</button>`);
     if (items.length) body += UI.sec('کارهای این روز', `<div class="list">${items.map((i) => Agenda.itemHtml(i, sel)).join('')}</div>`);
     body += monthExtras(vy, vm);
-    body += syncCard();
     body += UI.fab('calendar.newEvent', 'رویداد جدید');
     return { title: 'تقویم', color: C, body };
   }
@@ -3295,7 +3327,7 @@ const Calendar = (() => {
       sync: (d, el) => { S.settings.calSync = el.checked; DB.save('settings'); if (el.checked) Platform.calendar.read().then(() => App.refresh()); },
     },
   });
-  return { occurrences, eventsOn, eventRow, eventItem, edit, KINDS, occursOn, recOf };
+  return { occurrences, eventsOn, eventRow, eventItem, edit, KINDS, occursOn, recOf, syncCard, paper: monthGrid };
 })();
 
 /* ---- js/modules/finance.js ---- */
@@ -3309,6 +3341,7 @@ const Finance = (() => {
   const C = 'var(--c-fin)';
   let tab = 'overview';
   let my = null; // viewed Jalali [y, m]
+  let fsel = null; // selected day in the finance calendar
   const cat = (id) => S.cats.find((c) => c.id === id);
   const acc = (id) => S.accounts.find((a) => a.id === id);
   const catName = (id) => { const c = cat(id); if (!c) return 'بدون دسته'; const p = c.parent && cat(c.parent); return p ? p.name + ' › ' + c.name : c.name; };
@@ -3420,9 +3453,9 @@ const Finance = (() => {
     return ds.length ? { d: ds[0], overdue: false } : null;
   }
   function billProgress(b) { const n = Object.keys(b.paid || {}).length; return b.count ? { n, total: b.count, left: Math.max(0, b.count - n), leftAmount: Math.max(0, b.count - n) * b.amount } : { n }; }
-  function editBill(b) {
+  function editBill(b, preset = {}) {
     const isNew = !b;
-    b = b || { id: U.uid(), kind: 'installment', title: '', amount: null, start: J.today(), rec: { t: 'monthly', n: 1 }, count: null, catId: guessCat('قسط'), accountId: S.accounts[0] && S.accounts[0].id, person: '', note: '', paid: {} };
+    b = b || { id: U.uid(), kind: 'installment', title: '', amount: null, start: preset.start || J.today(), rec: { t: 'monthly', n: 1 }, count: null, catId: guessCat('قسط'), accountId: S.accounts[0] && S.accounts[0].id, person: '', note: '', paid: {} };
     UI.formSheet({
       title: isNew ? 'قسط، چک یا قبض جدید' : 'ویرایش',
       fields: [
@@ -3657,7 +3690,7 @@ const Finance = (() => {
     const [y, m] = my;
     const eye = `<button class="icon-btn ${S.settings.hideMoney ? 'on' : ''}" data-a="finance.hide" aria-label="${S.settings.hideMoney ? 'نمایش مبالغ' : 'پنهان کردن مبالغ'}">${icon(S.settings.hideMoney ? 'eyeOff' : 'eye')}</button>`;
     const head = `${eye}<button class="icon-btn" data-a="finance.sms" aria-label="ثبت از پیامک بانک">${icon('message')}</button><button class="icon-btn" data-a="finance.more" aria-label="بیشتر">${icon('more')}</button>`;
-    let body = UI.seg('finance.tab', tab, [['overview', 'خلاصه'], ['txs', 'تراکنش‌ها'], ['cats', 'دسته‌ها'], ['budget', 'بودجه'], ['bills', 'اقساط و قبوض'], ['debts', 'طلب و بدهی'], ['savings', 'پس‌انداز'], ['report', 'گزارش']]);
+    let body = UI.seg('finance.tab', tab, [['overview', 'خلاصه'], ['cal', 'تقویم'], ['txs', 'تراکنش‌ها'], ['cats', 'دسته‌ها'], ['budget', 'بودجه'], ['bills', 'اقساط و قبوض'], ['debts', 'طلب و بدهی'], ['savings', 'پس‌انداز'], ['report', 'گزارش']]);
     const t = monthTotals(y, m);
     if (tab === 'overview') {
       body += `<div class="card stack">${monthNav()}<div class="grid3"><div class="stat"><small>درآمد</small><b class="ok-t">${U.money(t.inc, { noUnit: true })}</b></div><div class="stat"><small>هزینه</small><b>${U.money(t.exp, { noUnit: true })}</b></div><div class="stat"><small>تراز</small><b class="${t.inc - t.exp < 0 ? 'danger-t' : ''}">${U.money(t.inc - t.exp, { noUnit: true })}</b></div></div><p class="small muted">مبالغ به ${U.unitLabel()}</p>
@@ -3669,6 +3702,8 @@ const Finance = (() => {
       if (up.length) body += UI.sec('سررسیدهای نزدیک', `<div class="list">${up.slice(0, 5).map(({ b, d, overdue }) => billRow(b, d, overdue)).join('')}</div>`);
       const recent = S.txs.slice().sort(U.by((x) => x.date + x.id, -1)).slice(0, 6);
       body += UI.sec('آخرین تراکنش‌ها', recent.length ? `<div class="list">${recent.map(txRow).join('')}</div>` : UI.empty('wallet', 'هنوز تراکنشی ثبت نشده. از دکمهٔ «هزینه» یا «افزودن سریع» استفاده کنید؛ مثلاً «۲۵۰ هزار بنزین».'), '<button class="link" data-a="finance.tab" data-v="txs">همه</button>');
+    } else if (tab === 'cal') {
+      body += finCal(y, m);
     } else if (tab === 'txs') {
       body += `<div class="card">${monthNav()}</div>`;
       const list = t.txs.slice().sort(U.by((x) => x.date + x.id, -1));
@@ -3717,6 +3752,30 @@ const Finance = (() => {
       if (days > 0 && days <= J.monthLen(y, m)) body += `<p class="small muted">میانگین هزینهٔ روزانه در این ماه: ${U.money(Math.round(t.exp / days))}</p>`;
     }
     return { title: 'مالی', color: C, body, head };
+  }
+  /* finance calendar: only money reminders — installments, loans, cheques, bills, subscriptions, debts */
+  function finMarks(a, z) {
+    const out = {}, today = J.today();
+    const put = (d, t, c) => { (out[d] = out[d] || []).push({ t, c }); };
+    S.bills.forEach((b) => billDates(b, a, z).forEach((d) => put(d, (b.paid || {})[d] ? '✓ ' + b.title : b.title, (b.paid || {})[d] ? 'var(--ok)' : d < today ? 'var(--danger)' : C)));
+    S.debts.filter((d) => !d.settled && d.due && d.due >= a && d.due <= z).forEach((d) => put(d.due, (d.dir === 'lent' ? 'طلب: ' : 'بدهی: ') + d.person, d.dir === 'lent' ? 'var(--ok)' : 'var(--danger)'));
+    return out;
+  }
+  function finCal(y, m) {
+    const today = J.today();
+    if (!fsel || J.toJ(fsel)[0] !== y || J.toJ(fsel)[1] !== m) { const [ty, tm] = J.toJ(today); fsel = ty === y && tm === m ? today : J.fromJ(y, m, 1); }
+    const a = J.monthStart(y, m), z = J.monthEnd(y, m);
+    const occ = []; S.bills.forEach((b) => billDates(b, a, z).forEach((d) => occ.push({ b, d })));
+    const paid = occ.filter((x) => (x.b.paid || {})[x.d]), late = occ.filter((x) => !(x.b.paid || {})[x.d] && x.d < today);
+    let html = `<p class="small muted">${icon('bell', 13)} فقط یادآوری‌های مالی: اقساط، وام، چک، قبض، اشتراک و موعد طلب و بدهی. با تیک زدن، پرداخت در هزینه‌ها ثبت می‌شود.</p>`;
+    html += Calendar.paper(y, m, { sel: fsel, selAct: 'finance.calSel', monthAct: 'finance.month', marks: finMarks });
+    html += `<div class="card fin-cal-sum"><span>سررسیدهای ${J.MONTHS[m - 1]}: <b>${U.fa(occ.length)}</b></span><span>جمع: <b>${U.money(U.sum(occ, (x) => x.b.amount))}</b></span><span>پرداخت‌شده: <b class="ok-t">${U.fa(paid.length)}</b></span>${late.length ? `<span class="danger-t">عقب‌افتاده: <b class="danger-t">${U.fa(late.length)}</b></span>` : ''}</div>`;
+    const dayBills = []; S.bills.forEach((b) => billDates(b, fsel, fsel).forEach((d) => dayBills.push({ b, d })));
+    const dayDebts = S.debts.filter((d) => !d.settled && d.due === fsel);
+    const rows = dayBills.map(({ b, d }) => billRow(b, d, !(b.paid || {})[d] && d < today, true)).join('') + dayDebts.map(debtRow).join('');
+    html += UI.sec(J.fmt(fsel, 'full'), rows ? `<div class="list">${rows}</div>` : '<p class="small muted">برای این روز یادآوری مالی ثبت نشده.</p>', `<button class="link" data-a="finance.newBill" data-d="${fsel}">${icon('plus', 16)} قسط یا چک</button>`);
+    html += UI.fab('finance.newBill', 'قسط یا چک جدید', `data-d="${fsel}"`);
+    return html;
   }
   function budgetRows(y, m, limit) {
     const by = spentByRoot(y, m);
@@ -3775,7 +3834,8 @@ const Finance = (() => {
       month: (d) => { let [y, m] = my; m += +d.v; if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } my = [y, m]; App.refresh(); },
       newTx: (d) => editTx(null, { type: d.type || 'exp' }),
       editTx: (d) => editTx(S.txs.find((t) => t.id === d.id)),
-      newBill: () => editBill(null), editBill: (d) => editBill(S.bills.find((b) => b.id === d.id)),
+      newBill: (d) => editBill(null, d && d.d ? { start: d.d } : {}), editBill: (d) => editBill(S.bills.find((b) => b.id === d.id)),
+      calSel: (d) => { fsel = d.d; my = J.toJ(fsel).slice(0, 2); App.refresh(); },
       payBill: (d) => { payBill(S.bills.find((b) => b.id === d.id), d.d); App.refresh(); },
       newDebt: () => editDebt(null), editDebt: (d) => editDebt(S.debts.find((x) => x.id === d.id)),
       newSaving: () => editSaving(null), editSaving: (d) => editSaving(S.savings.find((x) => x.id === d.id)),
@@ -4384,7 +4444,7 @@ const Mood = (() => {
   }
   function screen() {
     const today = J.today();
-    let body = UI.seg('mood.tab', tab, [['today', 'امروز'], ['history', 'سابقه'], ['insights', 'بینش‌ها']]);
+    let body = UI.seg('mood.tab', tab, [['today', 'امروز'], ['history', 'سابقه'], ['insights', 'چه حالم را بهتر می‌کند']]);
     if (tab === 'today') {
       const ms = S.moods.filter((m) => m.date === today);
       body += `<div class="card stack" style="text-align:center"><b>${ms.length ? 'یک ثبت دیگر؟' : 'امروز حالتان چطور است؟'}</b><div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 50)}</button>`).join('')}</div><small class="muted">روی یک چهره بزنید تا صفحهٔ شرح حال باز شود.</small></div>`;
@@ -4395,14 +4455,15 @@ const Mood = (() => {
       body += UI.sec('هفتهٔ گذشته', `<div class="card">${Charts.bars(last7, { h: 100, fmt: (v) => (v ? MOOD_LABELS[Math.round(v)] : '—') })}</div>`);
     } else if (tab === 'history') {
       const [jy] = J.toJ(today);
-      body += UI.sec(`سال در پیکسل‌ها · ${U.fa(jy)}`, `<div class="card" style="overflow-x:auto">${pixels(jy)}<div class="row small" style="justify-content:center;margin-top:8px;gap:6px">${[1, 2, 3, 4, 5].map((v) => `<span class="row" style="gap:3px"><i style="width:10px;height:10px;border-radius:2px;background:${MOOD_COLORS[v]};display:inline-block"></i>${MOOD_LABELS[v]}</span>`).join('')}</div></div>`);
+      body += UI.sec(`رنگ حال در سال ${U.fa(jy)}`, `<div class="card" style="overflow-x:auto"><p class="small muted" style="margin-bottom:8px">هر خانه یک روز سال است و رنگش حالِ ثبت‌شدهٔ همان روز. خانهٔ خالی یعنی آن روز ثبتی نداشته‌ای.</p>${pixels(jy)}<div class="row small" style="justify-content:center;margin-top:8px;gap:6px">${[1, 2, 3, 4, 5].map((v) => `<span class="row" style="gap:3px"><i style="width:10px;height:10px;border-radius:2px;background:${MOOD_COLORS[v]};display:inline-block"></i>${MOOD_LABELS[v]}</span>`).join('')}</div></div>`);
       const pts = []; for (let i = 29; i >= 0; i--) { const d = J.addDays(today, -i); const a = dayAvg(d); if (a) pts.push({ x: J.fmt(d, 'short'), y: a }); }
       if (pts.length > 1) body += UI.sec('۳۰ روز اخیر', `<div class="card">${Charts.line(pts, { color: C, fmt: (v) => U.num(v, 1) })}</div>`);
       const all = S.moods.slice().sort(U.by((m) => m.date + m.time, -1)).slice(0, 40);
       body += UI.sec('ثبت‌ها', all.length ? `<div class="list">${all.map(entryRow).join('')}</div>` : UI.empty('mood', 'هنوز ثبتی ندارید.'));
     } else {
       const ins = insights();
-      body += ins.length ? `<div class="list">${ins.map((x) => `<div class="li" style="--c:${x.diff > 0 ? 'var(--ok)' : 'var(--danger)'}"><span class="li-ic">${icon(x.diff > 0 ? 'arrowUp' : 'arrowDown')}</span><div class="li-t"><b>${U.esc(x.text)}</b><small>${U.esc(x.label)}</small></div></div>`).join('')}</div><p class="small muted">بینش‌ها از داده‌های ۹۰ روز اخیر و فقط وقتی ساخته می‌شوند که برای هر دو حالت دست‌کم ۳ روز ثبت وجود داشته باشد. همبستگی به معنای علت نیست.</p>` : UI.empty('sparkle', 'برای ساخت بینش، چند هفته حالتان را ثبت کنید. خودنگار حال شما را با ورزش، خواب، عادت‌ها، خرج و تغذیه مقایسه می‌کند.');
+      body += `<div class="notice info">${icon('info', 18)}<div class="small">خودنگار ثبت‌های ۹۰ روز اخیرت را کنار هم می‌گذارد و پیدا می‌کند در چه روزهایی حالت بهتر یا بدتر بوده؛ مثلاً روزهایی که ورزش کرده‌ای یا خوب خوابیده‌ای.</div></div>`;
+      body += ins.length ? `<div class="list">${ins.map((x) => `<div class="li" style="--c:${x.diff > 0 ? 'var(--ok)' : 'var(--danger)'}"><span class="li-ic">${icon(x.diff > 0 ? 'arrowUp' : 'arrowDown')}</span><div class="li-t"><b>${U.esc(x.text)}</b><small>${U.esc(x.label)}</small></div></div>`).join('')}</div><p class="small muted">این جمله‌ها از داده‌های ۹۰ روز اخیر و فقط وقتی ساخته می‌شوند که برای هر دو حالت دست‌کم ۳ روز ثبت وجود داشته باشد. همبستگی به معنای علت نیست.</p>` : UI.empty('sparkle', 'هنوز دادهٔ کافی نیست؛ چند هفته حالت را ثبت کن. خودنگار حال شما را با ورزش، خواب، عادت‌ها، خرج و تغذیه مقایسه می‌کند.');
       const cnt = {}; S.moods.forEach((m) => (m.emotions || []).forEach((e) => { cnt[e] = (cnt[e] || 0) + 1; }));
       const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 6);
       if (top.length) body += UI.sec('احساس‌های پرتکرار', `<div class="card">${Charts.hbars(top.map(([l, v]) => ({ label: l, value: v, color: C })), { fmt: (v) => U.fa(v) + ' بار' })}</div>`);
@@ -4410,7 +4471,7 @@ const Mood = (() => {
     return { title: 'حال روحی', color: C, body };
   }
   App.mod('mood', {
-    title: 'حال روحی', icon: 'mood', c: C, desc: 'ثبت حال، احساس و خواب، دفتر قدردانی، سال در پیکسل‌ها و بینش‌ها',
+    title: 'حال روحی', icon: 'mood', c: C, desc: 'ثبت حال، احساس و خواب، دفتر قدردانی، رنگ حال در سال و اینکه چه چیزی حالت را بهتر می‌کند',
     screens: { main: screen },
     agenda: (d) => [{ key: 'mood:' + d, mod: 'mood', ref: d, title: 'ثبت حال امروز', time: S.settings.notif.night.on ? S.settings.notif.night.time : '', scope: 'personal', done: S.moods.some((m) => m.date === d), color: C, icon: 'mood', src: 'حال', round: true, weight: 0.5, open: { a: 'mood.new', data: { d } } }],
     toggle: (d) => { const m = S.moods.filter((x) => x.date === d); if (m.length) { App.go('mood'); return; } edit(null, { date: d }); },
@@ -4555,12 +4616,12 @@ const Home = (() => {
       <p class="hero-date">${J.fmt(today,'full')}</p></div>
       <div class="hero-art" aria-hidden="true">${InkScenes.picture('home')}</div>
       <div class="hero-status">${sc.total ? Charts.ring(sc.pct,{size:48,stroke:3,color:'var(--accent)',label:U.fa(sc.pct)+'٪'}) : `<span class="hero-start" aria-hidden="true">${icon('sun',22)}</span>`}
-      <div class="hero-status-copy"><b>${sc.total ? U.fa(sc.done)+' از '+U.fa(sc.total)+' قدم امروز' : 'امروز را از همین‌جا شروع کن'}</b><small>${sc.total ? 'هر قدم، بخشی از مسیر توست.' : 'یک کار کوچک هم کافی‌ست.'}</small></div>
+      <div class="hero-status-copy"><b>${sc.total ? U.fa(sc.done)+' از '+U.fa(sc.total)+' قدم امروز' : 'امروز را از همین‌جا شروع کن'}</b><small>${sc.total ? (workOn ? 'شخصی و کاری با هم' : 'هر قدم، بخشی از مسیر توست.') : 'یک کار کوچک هم کافی‌ست.'}</small></div>
       <button class="btn primary" data-a="tasks.new">${icon('plus',17)} کار جدید</button></div>
       ${hol.length ? `<p class="hero-holiday">${U.esc(hol.map(h=>h.title).join('، '))}</p>` : ''}</section>`;
     body += `<div class="week-strip" aria-label="روزهای هفته">${['ش','ی','د','س','چ','پ','ج'].map((label,i)=>{const d=J.addDays(weekStart,i);return `<button class="week-day ${d===today?'selected':''}" data-a="home.day" data-d="${d}" aria-label="${J.fmt(d,'full')}" ${d===today?'aria-current="date"':''}><span>${label}</span><b>${U.fa(J.toJ(d)[2])}</b><i></i></button>`;}).join('')}</div>`;
-    body += `<button class="qa-bar" data-a="qa.open"><span class="quick-symbol">${icon('plus',22)}</span><span class="grow"><b>از ذهنت بیرونش بیاور</b><small>یک کار، هزینه یا قرار را سریع ثبت کن</small></span>${icon('sparkle',20)}</button>`;
-    body += `<button class="companion-entry" data-a="nav.go" data-s="assistant"><span class="li-ic">${icon('message',22)}</span><span class="grow"><b>یک همراه برای قدم بعدی</b><small>مرور روز، مرتب کردن کارها و ثبت با گفت‌وگو</small></span>${icon('chevL',20)}</button>`;
+    body += `<button class="qa-bar" data-a="qa.open"><span class="quick-symbol">${icon('plus',22)}</span><span class="grow"><b>از ذهنت بیرون بیار</b><small>یک کار، هزینه یا قرار را سریع ثبت کن</small></span>${icon('sparkle',20)}</button>`;
+    body += `<button class="companion-entry ai" data-a="nav.go" data-s="assistant"><span class="li-ic ai-ic">${icon('sparkle',24)}</span><span class="grow"><b>دستیار هوشمند</b></span>${icon('chevL',20)}</button>`;
     const rv = Review.prompt();
     if (rv) body += rv;
     /* today list */
@@ -4569,12 +4630,15 @@ const Home = (() => {
     const open = list.filter((i) => !i.done), done = list.filter((i) => i.done);
     const cnt = (sc2) => { const xs = all.filter((i) => (i.scope || 'personal') === sc2); return `${U.fa(xs.filter((i) => i.done).length)}/${U.fa(xs.length)}`; };
     let todayHtml = workOn ? `<div class="seg" role="tablist"><button class="${scope === 'personal' ? 'on' : ''}" data-a="home.scope" data-v="personal">شخصی <small class="num">${cnt('personal')}</small></button><button class="${scope === 'work' ? 'on' : ''}" data-a="home.scope" data-v="work">کاری <small class="num">${cnt('work')}</small></button></div>` : '';
-    if (!list.length) todayHtml += `<div class="card">${UI.empty('checkSquare', scope === 'work' ? 'کار کاری برای امروز ندارید.' : 'صفحهٔ امروزت هنوز باز است. اولین کار را به دلخواهت اضافه کن.', `<button class="btn primary" data-a="tasks.new" data-scope="${scope}">${icon('plus', 18)} کار جدید</button>`)}</div>`;
+    const isW = scope === 'work', other = isW ? 'personal' : 'work';
+    const otherOpen = workOn ? all.filter((i) => (i.scope || 'personal') === other && !i.done).length : 0;
+    const otherNote = otherOpen ? `<button class="link" data-a="home.scope" data-v="${other}">${U.fa(otherOpen)} مورد در «${isW ? 'شخصی' : 'کاری'}» مانده ←</button>` : '';
+    if (!list.length) todayHtml += `<div class="card">${UI.empty('checkSquare', isW ? 'برنامهٔ کاری برای امروز ندارید.' : 'صفحهٔ امروزت هنوز باز است. اولین کار را به دلخواهت اضافه کن.', `<button class="btn primary" data-a="tasks.new" data-scope="${scope}">${icon('plus', 18)} ${isW ? 'برنامهٔ کاری جدید' : 'کار جدید'}</button>${otherNote}`)}</div>`;
     else {
-      todayHtml += open.length ? `<div class="list">${open.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : `<div class="card row">${icon('trophy', 26)}<div class="grow"><b>همهٔ کارهای امروز انجام شد!</b><p class="small muted">روز پرباری بود.</p></div></div>`;
+      todayHtml += open.length ? `<div class="list">${open.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : `<div class="card row">${icon('trophy', 26)}<div class="grow"><b>${workOn ? (isW ? 'همهٔ برنامه‌های کاری امروز انجام شد!' : 'همهٔ کارهای شخصی امروز انجام شد!') : 'همهٔ کارهای امروز انجام شد!'}</b><p class="small muted">${otherOpen ? '' : 'روز پرباری بود.'}</p>${otherNote}</div></div>`;
       if (done.length) todayHtml += `<button class="link" data-a="home.showDone">${showDone ? 'پنهان کردن' : 'نمایش'} ${U.fa(done.length)} مورد انجام‌شده</button>${showDone ? `<div class="list">${done.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : ''}`;
     }
-    body += '<div class="home-layout"><div class="home-primary">' + UI.sec('کارهای امروز', todayHtml, `<button class="link" data-a="tasks.new" data-scope="${scope}">${icon('plus', 16)} کار</button>`);
+    body += '<div class="home-layout"><div class="home-primary">' + UI.sec('کارهای امروز', todayHtml, `<button class="link" data-a="tasks.new" data-scope="${scope}">${icon('plus', 16)} ${workOn && scope === 'work' ? 'برنامهٔ کاری' : 'کار'}</button>`);
     body += '</div><div class="home-secondary">';
     /* module cards */
     const cards = S.settings.homeOrder.filter((id) => App.onHome(id) && App.mods[id] && App.mods[id].card).map((id) => { try { let html=App.mods[id].card(); if(id==='mood') html=html.replace('class="mcard"','class="mcard wide"'); return html.replace('class="mcard', 'data-module="'+id+'" class="mcard'); } catch (e) { console.error(e); return ''; } }).filter(Boolean);
@@ -4586,14 +4650,14 @@ const Home = (() => {
     if (cards.length) body += UI.sec('زندگی در یک نگاه', `<div class="cards">${cards.join('')}</div>`, '<button class="link" data-a="nav.go" data-s="settings/modules">چیدمان</button>');
     body += '</div></div>';
     return { title: 'خودنگار', sub: 'دفتر روزانهٔ شما', color: 'var(--accent)', body,
-      head: `<button class="icon-btn" data-a="nav.go" data-s="assistant" aria-label="همراه خودنگار">${icon('message')}</button><button class="icon-btn" data-a="nav.go" data-s="review" aria-label="مرور هفته">${icon('chart')}</button>${S.settings.lock && S.settings.lock.enabled ? `<button class="icon-btn" data-a="lock.now" aria-label="قفل">${icon('lock')}</button>` : ''}` };
+      head: `<button class="icon-btn" data-a="nav.go" data-s="assistant" aria-label="دستیار هوشمند">${icon('sparkle')}</button><button class="icon-btn" data-a="nav.go" data-s="review" aria-label="مرور هفته">${icon('chart')}</button>${S.settings.lock && S.settings.lock.enabled ? `<button class="icon-btn" data-a="lock.now" aria-label="قفل">${icon('lock')}</button>` : ''}` };
   }
   function modulesScreen() {
     const tiles = MODULE_ORDER.map((id) => App.mods[id]).filter(Boolean).map((m) => {
       const on = App.on(m.id);
       return `<button class="mod-tile ${on ? '' : 'off'}" ${on ? `data-a="nav.go" data-s="${m.id}"` : 'data-a="nav.go" data-s="settings/modules"'} style="--c:${m.c}"><span class="li-ic">${icon(m.icon, 22)}</span><b>${m.title}</b><small>${on ? m.desc : 'خاموش است؛ برای فعال کردن بزنید'}</small></button>`;
     }).join('');
-    const extra = `<button class="mod-tile" data-a="nav.go" data-s="assistant" style="--c:var(--accent)"><span class="li-ic">${icon('message',22)}</span><b>همراه خودنگار</b><small>گفت‌وگو، مرور روز و ثبت با تأیید</small></button><button class="mod-tile" data-a="nav.go" data-s="review" style="--c:var(--accent)"><span class="li-ic">${icon('chart', 22)}</span><b>مرور هفته</b><small>آمار هفته و مرور جمعه‌شب</small></button>`;
+    const extra = `<button class="mod-tile" data-a="nav.go" data-s="assistant" style="--c:var(--accent)"><span class="li-ic">${icon('sparkle',22)}</span><b>دستیار هوشمند</b><small>پرسیدن از دفتر، مرور روز و ثبت با یک جمله</small></button><button class="mod-tile" data-a="nav.go" data-s="review" style="--c:var(--accent)"><span class="li-ic">${icon('chart', 22)}</span><b>مرور هفته</b><small>آمار هفته و مرور جمعه‌شب</small></button>`;
     return { title: 'بخش‌ها', body: `<div class="mod-grid">${tiles}${extra}</div>` };
   }
   App.screen('home', screen);
@@ -4615,7 +4679,7 @@ const Settings = (() => {
     const L = License.lic();
     let body = `<div class="set-group">${row('users', 'حساب کاربری', U.esc(Account.status()), icon('chevL', 18), 'data-a="account.edit"')}
       ${row('sun', 'رنگ و ظاهر', Appearance.current().name + ' · ' + { auto: 'خودکار', light: 'روشن', dark: 'تیره' }[st.theme], icon('chevL', 18), go('settings/appearance'))}
-      ${row('message', 'همراه و هوش مصنوعی', st.assistant.mode === 'online' ? 'گفت‌وگوی آنلاین و ابزارهای محلی' : 'ابزارهای محلی؛ بدون نیاز به اینترنت', icon('chevL',18),go('settings/assistant'))}
+      ${row('sparkle', 'دستیار هوشمند', st.assistant.mode === 'online' ? 'گفت‌وگوی آنلاین و ابزارهای محلی' : 'ابزارهای محلی؛ بدون نیاز به اینترنت', icon('chevL',18),go('settings/assistant'))}
       ${row('cash', 'واحد پول', st.unit === 'rial' ? 'ریال' : 'تومان', icon('chevL', 18), 'data-a="settings.unit"')}</div>`;
     body += `<div class="set-group">${row('book', 'راهنمای تصویری برنامه', 'آموزش کامل و گام‌به‌گام همهٔ بخش‌ها', icon('chevL',18), go('settings/guide'))}</div>`;
     body += UI.sec('برنامه', `<div class="set-group">${row('grid', 'بخش‌ها و صفحهٔ اصلی', 'روشن و خاموش کردن بخش‌ها و چیدمان کارت‌ها', icon('chevL', 18), go('settings/modules'))}
@@ -4663,6 +4727,7 @@ const Settings = (() => {
       ${App.on('workout') ? nr('dumbbell', 'یادآوری تمرین', 'در روزهای برنامهٔ تمرینی', 'ساعت ' + t('workout', n.workout.time), sw('settings.non', n.workout.on, 'data-k="workout"')) : ''}
       ${nr('sparkle', 'مرور هفتگی', '', sel('settings.nreviewDay', J.WEEKDAYS.map((w, i) => [i, w]), n.review.day) + ' ساعت ' + t('review', n.review.time), sw('settings.non', n.review.on, 'data-k="review"'))}
     </div>`;
+    if (App.on('calendar')) body += UI.sec('تقویم گوشی', Calendar.syncCard());
     if (!Platform.isNative) body += `<div class="set-group">${row('bell', 'اعلان سیستمی مرورگر', 'وقتی خودنگار در پس‌زمینه باز است', n.system ? '<span class="pill green">فعال</span>' : '<span class="btn sm mod">اجازه</span>', n.system ? '' : 'data-a="settings.perm"')}</div>`;
     const list = Notify.planned(J.today()).filter((x) => x.when > Date.now());
     body += UI.sec('اعلان‌های باقی‌ماندهٔ امروز', list.length ? `<div class="list">${list.slice(0, 12).map((x) => `<div class="li"><span class="li-ic" style="--c:var(--accent)">${icon(x.icon || 'bell', 18)}</span><div class="li-t"><b>${U.esc(x.title)}</b><small>${U.esc(x.body || '')}</small></div><b class="li-end num">${U.fa(new Date(x.when).toTimeString().slice(0, 5))}</b></div>`).join('')}</div><button class="btn sm ghost" data-a="settings.testNotif">نمایش یک اعلان آزمایشی</button>` : `<p class="small muted">اعلان دیگری برای امروز نمانده.</p><button class="btn sm ghost" data-a="settings.testNotif">نمایش یک اعلان آزمایشی</button>`);
@@ -5407,7 +5472,7 @@ const InkScenes = (() => {
     work:{ title:'کار و پروژه‌ها', chapter:'برگِ ایده‌ها', caption:'ایده‌ها را روی کاغذ بیاور؛ قدم بعدی روشن‌تر می‌شود.', color:'#4D6976', asset:'planning' },
     tasks:{ title:'کارهای من', chapter:'برگِ امروز', caption:'همه‌چیز لازم نیست همین امروز انجام شود. از یک کار شروع کن.', color:'#46634C', asset:'planning' },
     review:{ title:'مرور هفته', chapter:'برگِ نگاه دوباره', caption:'مکث کن؛ هم قدم‌هایت را ببین، هم چیزهایی که آموختی.', color:'#64764F', asset:'home' },
-    assistant:{ title:'همراه خودنگار', chapter:'یک قدم روشن‌تر', caption:'با ریتم خودت پیش برو.', color:'#64764F', asset:'planning' },
+    assistant:{ title:'دستیار هوشمند', chapter:'یک قدم روشن‌تر', caption:'با ریتم خودت پیش برو.', color:'#64764F', asset:'planning' },
     settings:{ title:'تنظیمات', chapter:'به سلیقهٔ تو', caption:'این دفتر را به شیوهٔ خودت ورق بزن.', color:'#687361', asset:'planning' },
     modules:{ title:'بخش‌های زندگی', chapter:'فهرست دفتر', caption:'هر بخش، جایی برای تکه‌ای از زندگی تو.', color:'#64764F', asset:'growth' }
   };
@@ -5540,6 +5605,42 @@ const Companion = (() => {
     if(App.on('finance')&&!S.settings.hideMoney){const [y,m]=J.toJ(t),start=J.monthStart(y,m);const xs=S.txs.filter(x=>x.date>=start&&x.date<=t);data.monthlyMoney={unit:'IRR',income:U.sum(xs.filter(x=>x.type==='inc'),x=>x.amount),expense:U.sum(xs.filter(x=>x.type==='exp'),x=>x.amount)};}
     return data;
   }
+  /* «تولد علی کی است؟»، «سالگرد ازدواج کیه»، «جلسه با تأمین‌کننده کی است؟»، «تولدهای پیش رو» */
+  const WHEN_RE=/(^|\s)(کی|کیه|کِی|کِیه|چه روزی|چه روز|چه تاریخی|چه تاریخ|چه موقع|چه وقت|چه ساعتی|چند روز|کدام روز|کدوم روز)(?=\s|$|[؟?!.])/;
+  const WHEN_STOP=new Set(['تولد','تولدها','تولدهای','سالگرد','سالگردها','ازدواج','کی','کیه','کِی','کِیه','هست','است','هستش','اس','چه','روزی','روز','تاریخی','تاریخ','موقع','وقت','ساعتی','چند','کدام','کدوم','بعدی','پیش','رو','من','می','شه','میشه','دارم','داره','با','و','را','رو','آقای','خانم','عزیزم','لطفا','لطفاً','بگو','بهم']);
+  function whenAnswer(s){
+    const kind=/تولد/.test(s)?'birthday':/سالگرد/.test(s)?'anniversary':null;
+    if(!kind&&!WHEN_RE.test(s))return null;
+    if(!App.on('calendar'))return 'بخش تقویم خاموش است. از تنظیمات ← بخش‌ها روشنش کن تا بتوانم از تقویم جواب بدهم.';
+    const today=J.today(),label={birthday:'تولد',anniversary:'سالگرد',meeting:'جلسه',event:'رویداد'};
+    const words=s.replace(/[؟?!.،,:«»"]/g,' ').split(' ').filter(w=>w.length>1&&!WHEN_STOP.has(w));
+    const nextOf=e=>Calendar.occurrences(e,today,J.addDays(today,400))[0]||null;
+    let evs=S.events.map(e=>({e,d:nextOf(e)}));
+    (Platform.calendar.cached||[]).forEach(x=>{if(x.date>=today)evs.push({e:Object.assign({kind:'event',external:true},x),d:x.date});});
+    if(kind)evs=evs.filter(x=>x.e.kind===kind);
+    const name=e=>normalize((e.person||'')+' '+(e.title||''));
+    const line=({e,d})=>{
+      if(!d)return '• '+(e.title||e.person)+': '+(e.date?'گذشته ('+J.fmt(e.date)+')':'تاریخ ندارد');
+      const left=J.diff(d,today),age=e.knownYear&&(e.kind==='birthday'||e.kind==='anniversary')?J.toJ(d)[0]-J.toJ(e.date)[0]:0;
+      return '• '+(e.kind==='birthday'?'تولد '+(e.person||e.title).replace(/^تولد\s*/,''):e.title||e.person)+': '+J.fmt(d,'full')+(e.time&&!e.allDay?' · ساعت '+U.fa(e.time):'')+' · '+(left===0?'امروز':left===1?'فردا':U.fa(left)+' روز دیگر')+(age>0?' · '+U.fa(age)+(e.kind==='birthday'?' سالگی':' سال'):'')+(e.external?' · تقویم گوشی':'');
+    };
+    if(!words.length){
+      const up=evs.filter(x=>x.d&&J.diff(x.d,today)<=60).sort(U.by(x=>x.d)).slice(0,6);
+      const what=kind?label[kind]+'های':'رویدادهای';
+      return up.length?what+' ۶۰ روز آینده:\n'+up.map(line).join('\n'):(kind?label[kind]+'ی':'رویدادی')+' در ۶۰ روز آینده در تقویم ثبت نشده.';
+    }
+    let hits=evs.filter(x=>words.every(w=>name(x.e).includes(w)));
+    if(!hits.length)hits=evs.filter(x=>words.some(w=>w.length>2&&name(x.e).includes(w)));
+    hits.sort((a,b)=>(a.d||'9999').localeCompare(b.d||'9999'));
+    if(hits.length)return hits.slice(0,5).map(line).join('\n');
+    const q=words.join(' ');
+    if(!kind){
+      const ts=S.tasks.filter(t=>(App.on('work')||t.scope!=='work')&&words.every(w=>normalize(t.title).includes(w)));
+      if(ts.length)return ts.slice(0,5).map(t=>{const d=Tasks.isRec(t)?Rec.next(Tasks.recOf(t),today):t.date;return '• '+t.title+': '+(d?J.fmt(d,'full')+(t.time?' · ساعت '+U.fa(t.time):'')+' · '+J.rel(d):'بدون تاریخ')+(t.done&&!Tasks.isRec(t)?' · انجام‌شده':'');}).join('\n');
+      return 'در تقویم و کارها چیزی با «'+q+'» پیدا نکردم.';
+    }
+    return 'در تقویم '+label[kind]+'ی با نام «'+q+'» پیدا نکردم.\nبرای ثبت بنویس: «ثبت کن '+label[kind]+' '+q+' ۱۲ آذر»';
+  }
   function proposal(raw){
     const s=normalize(raw);const w=s.match(/^(?:ثبت کن\s*[:：]?\s*|ثبت\s*[:：]?\s*)?(\d{1,2})\s*لیوان\s*آب(?:\s*(?:خوردم|نوشیدم|ثبت کن|اضافه کن))?[.!؟?]?$/);
     if(w){if(!App.on('food'))return {error:'برای ثبت آب، ابتدا بخش تغذیه را روشن کن.'};const n=+w[1];if(n<1||n>20)return {error:'تعداد آب باید بین ۱ و ۲۰ لیوان باشد.'};return {kind:'water',n,date:J.today(),raw,status:'pending'};}
@@ -5556,13 +5657,15 @@ const Companion = (() => {
   function local(raw){
     const s=normalize(raw),p=proposal(raw);
     if(p){if(p.error)return reply(p.error,{mode:'local'});return reply('این برداشت من از متن توست. قبل از ثبت، جزئیات را بررسی کن.',{mode:'local',proposal:p,sensitive:p.kind==='money'});}
-    if(/^(سلام|درود|سلام سلام)[!؟.\s]*$/.test(s))return reply('سلام. می‌توانم روزت را خلاصه کنم، هزینه‌های ثبت‌شده را مرور کنم یا یک کار و قرار را با تأیید تو ثبت کنم. از پیشنهادهای بالا شروع کن.',{mode:'local'});
+    if(/^(سلام|درود|سلام سلام)[!؟.\s]*$/.test(s))return reply('سلام. می‌توانم بگویم تولد یا قرار کسی کی است، روزت را خلاصه کنم، هزینه‌ها را مرور کنم یا یک کار و قرار را با تأیید تو ثبت کنم.',{mode:'local'});
+    if(/تولد|سالگرد/.test(s)){const wa=whenAnswer(s);if(wa)return reply(wa,{mode:'local'});}
     if(/هزینه|درآمد|مالی|خرج/.test(s))return reply(financeSummary(s),{mode:'local',sensitive:true});
     if(/سه کار|سه قدم|اولویت|مهم/.test(s))return reply(daily(/فردا/.test(s)?J.addDays(J.today(),1):J.today(),true),{mode:'local'});
     if(/خلاصه|برنامه|امروز|فردا|کارها/.test(s))return reply(daily(/فردا/.test(s)?J.addDays(J.today(),1):J.today()),{mode:'local'});
     if(/^جستجو\s+/.test(s)){const q=s.replace(/^جستجو\s+/,'');const hits=S.tasks.filter(x=>(App.on('work')||x.scope!=='work')&&normalize(x.title).includes(q)).slice(0,10);return reply(hits.length?'کارهای پیدا‌شده:\n'+hits.map(x=>'• '+x.title+(x.date?' · '+J.fmt(x.date,'short'):'')+(x.done?' · انجام‌شده':'')).join('\n'):'کاری با این عبارت پیدا نشد.',{mode:'local'});}
     if(/آب/.test(s))return reply(App.on('food')?'آب ثبت‌شدهٔ امروز: '+U.fa(S.water[J.today()]||0)+' لیوان.\nبرای ثبت بنویس: «۲ لیوان آب خوردم».':'بخش تغذیه خاموش است.',{mode:'local'});
-    return reply('من در حالت محلی با قواعد مشخص کار می‌کنم و مدل زبانی نیستم. این درخواست‌ها را می‌فهمم:\n• امروزم را خلاصه کن\n• سه کار مهم\n• هزینه‌های این ماه\n• ثبت کن فردا ساعت ۹ صبح خرید نان\n• ۲ لیوان آب خوردم\n• جستجو خرید\n\nبرای گفت‌وگوی آزاد، اتصال آنلاین را در تنظیمات دستیار فعال کن.',{mode:'local'});
+    {const wa=whenAnswer(s);if(wa)return reply(wa,{mode:'local'});}
+    return reply('این را متوجه نشدم. در حالت آفلاین از ثبت‌های همین دفتر جواب می‌دهم؛ مثلاً بپرس:\n• تولد علی کی است؟\n• تولدهای پیش رو\n• امروزم را خلاصه کن\n• سه کار مهم\n• هزینه‌های این ماه\n• ثبت کن فردا ساعت ۹ صبح خرید نان\n• ۲ لیوان آب خوردم\n• جستجو خرید\n\nبرای گفت‌وگوی آزاد، حالت آنلاین را در تنظیمات دستیار روشن کن.',{mode:'local'});
   }
   function endpoint(raw){
     let url;try{url=new URL(raw);}catch{throw new Error('نشانی سرویس معتبر نیست.');}const loop=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
@@ -5629,17 +5732,18 @@ const Companion = (() => {
   }
   function renderMessage(m){
     const masked=m.sensitive&&S.settings.hideMoney;
-    return `<article class="chat-message ${m.role==='user'?'user':'bot'}"><div class="chat-meta"><b>${m.role==='user'?'تو':m.mode==='online'?'دستیار آنلاین':'همراه محلی'}</b><span>${new Date(m.at).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})}</span></div><div class="chat-text">${U.esc(masked?'این پیام ممکن است شامل اطلاعات مالی باشد؛ نمایش آن با پنهان بودن مبالغ متوقف است.':m.text)}</div>${masked?'':proposalHtml(m)}${m.setup?'<button class="btn sm ghost" data-a="nav.go" data-s="settings/assistant">تنظیم اتصال آنلاین</button>':''}${m.retry?`<button class="btn sm ghost assistant-retry" data-a="assistant.retry" data-id="${m.id}">تلاش دوباره</button>`:''}</article>`;
+    return `<article class="chat-message ${m.role==='user'?'user':'bot'}"><div class="chat-meta"><b>${m.role==='user'?'تو':m.mode==='online'?'دستیار هوشمند · آنلاین':'دستیار هوشمند'}</b><span>${new Date(m.at).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})}</span></div><div class="chat-text">${U.esc(masked?'این پیام ممکن است شامل اطلاعات مالی باشد؛ نمایش آن با پنهان بودن مبالغ متوقف است.':m.text)}</div>${masked?'':proposalHtml(m)}${m.setup?'<button class="btn sm ghost" data-a="nav.go" data-s="settings/assistant">تنظیم اتصال آنلاین</button>':''}${m.retry?`<button class="btn sm ghost assistant-retry" data-a="assistant.retry" data-id="${m.id}">تلاش دوباره</button>`:''}</article>`;
   }
   function screen(){
     const isOnline=settings().mode==='online';
-    return {title:'همراه خودنگار',sub:'یک گفت‌وگو، یک قدم روشن‌تر',head:`<button class="icon-btn" data-a="nav.go" data-s="settings/assistant" aria-label="تنظیمات دستیار">${icon('settings')}</button>`,body:`
-    <section class="companion-intro"><div class="grow"><span class="hero-eyebrow">جایی برای مرتب کردن فکرها</span><h2>از کجا شروع کنیم؟</h2><p>روزت را ببین، یک قدم انتخاب کن<br>و با ریتم خودت پیش برو.</p></div><div class="companion-art" aria-hidden="true">${InkScenes.picture('planning')}</div></section>
-    <div class="assistant-toolbar"><span class="assistant-status">${icon(isOnline?'sparkle':'check',15)} ${isOnline?'حالت آنلاین':'حالت محلی · آفلاین'}</span><button class="link" data-a="assistant.clear">پاک کردن گفت‌وگو</button></div>
-    <p class="chat-note">${isOnline?'هر بار فقط پیام تازه ارسال می‌شود'+(settings().shareContext?'، همراه خلاصه‌ای که در تنظیمات اجازه داده‌ای.':'. داده‌های دفتر خودکار ارسال نمی‌شوند.'):'پاسخ‌ها با قواعد محلی و ثبت‌های دفتر ساخته می‌شوند؛ این حالت مدل زبانی نیست.'}</p>
-    <div class="assistant-suggestions" role="group" aria-label="ابزارهای محلی دستیار">${[['sun','امروزم را خلاصه کن'],['tasks','سه کار مهم'],['wallet','هزینه‌های این ماه'],['water','۲ لیوان آب خوردم']].map(([ic,text])=>`<button data-a="assistant.suggest" data-text="${U.esc(text)}">${icon(ic,18)} ${text}</button>`).join('')}</div>
-    <div class="assistant-chat" role="log" aria-live="polite" aria-relevant="additions text">${messages().length?messages().map(renderMessage).join(''):'<div class="chat-empty">یک پیشنهاد را انتخاب کن یا بنویس:<br>«ثبت کن فردا ساعت ۹ صبح خرید نان»</div>'}${busy?'<div class="chat-busy" role="status">در انتظار پاسخ… <button class="link" data-a="assistant.stop">توقف</button></div>':''}</div>
-    <form class="chat-composer" aria-label="ارسال پیام"><textarea id="assistantText" rows="2" maxlength="3000" placeholder="پیامت را اینجا بنویس…" aria-label="پیام به دستیار">${U.esc(draft)}</textarea><button type="submit" class="btn primary" ${busy?'disabled':''} aria-label="ارسال پیام">${icon('arrowUp',22)}</button></form>
+    return {title:'دستیار هوشمند',sub:'از دفترت بپرس؛ کوتاه و روشن',head:`<button class="icon-btn" data-a="nav.go" data-s="settings/assistant" aria-label="تنظیمات دستیار">${icon('settings')}</button>`,body:`
+    <section class="companion-intro"><div class="grow"><span class="hero-eyebrow">${icon('sparkle',13)} دستیار هوشمند خودنگار</span><h2>از کجا شروع کنیم؟</h2><p>از کارها، تولدها، قرارها و هزینه‌هایت بپرس<br>یا با یک جمله چیزی ثبت کن.</p></div><div class="companion-art" aria-hidden="true">${InkScenes.picture('planning')}</div></section>
+    <section class="assistant-suggest-box" aria-label="پیشنهادهای آماده"><span class="sug-h">${icon('list',15)} پیشنهادهای آماده · با یک لمس بپرس</span>
+    <div class="assistant-suggestions" role="group" aria-label="پیشنهادهای آماده">${[['sun','امروزم را خلاصه کن'],['tasks','سه کار مهم'],['wallet','هزینه‌های این ماه'],['gift','تولدهای پیش رو']].map(([ic,text])=>`<button data-a="assistant.suggest" data-text="${U.esc(text)}">${icon(ic,18)} ${text}</button>`).join('')}</div></section>
+    <section class="chat-panel" aria-label="گفت‌وگو با دستیار"><div class="chat-panel-h"><b>${icon('message',16)} گفت‌وگو</b><span class="assistant-status">${isOnline?'آنلاین':'آفلاین'}</span><button class="link" data-a="assistant.clear">پاک کردن</button></div>
+    <div class="assistant-chat" role="log" aria-live="polite" aria-relevant="additions text">${messages().length?messages().map(renderMessage).join(''):'<div class="chat-empty">سؤالت را بنویس؛ مثلاً:<br>«تولد علی کی است؟»<br>«ثبت کن فردا ساعت ۹ صبح خرید نان»</div>'}${busy?'<div class="chat-busy" role="status">در انتظار پاسخ… <button class="link" data-a="assistant.stop">توقف</button></div>':''}</div>
+    <form class="chat-composer" aria-label="ارسال پیام"><textarea id="assistantText" rows="2" maxlength="3000" placeholder="پیامت را اینجا بنویس…" aria-label="پیام به دستیار">${U.esc(draft)}</textarea><button type="submit" class="btn primary" ${busy?'disabled':''} aria-label="ارسال پیام">${icon('arrowUp',22)}</button></form></section>
+    <p class="chat-note">${isOnline?'هر بار فقط پیام تازه ارسال می‌شود'+(settings().shareContext?'، همراه خلاصه‌ای که در تنظیمات اجازه داده‌ای.':'. داده‌های دفتر خودکار ارسال نمی‌شوند.'):'در حالت آفلاین، دستیار فقط از ثبت‌های همین دفتر جواب می‌دهد و چیزی به اینترنت نمی‌فرستد. برای گفت‌وگوی آزاد، حالت آنلاین را از تنظیمات دستیار روشن کن.'}</p>
     <p class="chat-note">ثبت‌ها به تأیید تو نیاز دارند. گفت‌وگو روی همین مرورگر ذخیره و در پشتیبان شامل می‌شود. پیشنهادها جای نظر تخصصی را نمی‌گیرند.</p>`,mount(root){
       const log=root.querySelector('.assistant-chat');log.scrollTop=log.scrollHeight;
       const ta=root.querySelector('#assistantText');ta.oninput=()=>{draft=ta.value;};
@@ -5649,7 +5753,7 @@ const Companion = (() => {
   }
   function configScreen(){
     const cfg=settings(),defaultUrl=location.protocol==='file:'?'http://127.0.0.1:8787/api/chat':location.origin+'/api/chat';
-    return {title:'تنظیمات همراه',body:`<section class="appearance-hero"><span class="pill mod">انتخاب با توست</span><h2>محلی یا آنلاین؟</h2><p class="muted">مرور دفتر و ثبت با تأیید، همیشه آفلاین در دسترس است.</p></section>
+    return {title:'تنظیمات دستیار هوشمند',body:`<section class="appearance-hero"><span class="pill mod">انتخاب با توست</span><h2>محلی یا آنلاین؟</h2><p class="muted">مرور دفتر و ثبت با تأیید، همیشه آفلاین در دسترس است.</p></section>
     <form id="assistantConfig" class="connection-card"><label class="field"><span>حالت گفت‌وگو</span><select name="mode"><option value="local" ${cfg.mode!=='online'?'selected':''}>محلی · قواعد آفلاین</option><option value="online" ${cfg.mode==='online'?'selected':''}>آنلاین · مدل هوش مصنوعی</option></select></label>
     <p>برای حالت آنلاین، سرویس همراهِ بستهٔ برنامه را اجرا کن. کلید OpenAI فقط روی سرور می‌ماند.</p>
     <label class="field"><span>نشانی سرویس همراه</span><input name="endpoint" dir="ltr" type="url" value="${U.esc(cfg.endpoint)}" placeholder="${U.esc(defaultUrl)}" autocomplete="off"></label>
@@ -5662,7 +5766,7 @@ const Companion = (() => {
         const token=f.token.value.trim();if(/^sk-/.test(token))throw new Error('این شبیه کلید OpenAI است. فقط رمز اتصال سرور را وارد کن.');
         if(next.mode==='online'&&!next.endpoint)throw new Error('نشانی سرویس همراه را وارد کن.');
         if(next.endpoint!==cfg.endpoint&&!token)accessToken='';
-        S.settings.assistant=next;if(token)accessToken=token;DB.save('settings');status.textContent='تنظیمات ذخیره شد.';App.toast('تنظیمات همراه ذخیره شد.');f.token.value='';
+        S.settings.assistant=next;if(token)accessToken=token;DB.save('settings');status.textContent='تنظیمات ذخیره شد.';App.toast('تنظیمات دستیار ذخیره شد.');f.token.value='';
       }catch(err){status.textContent=err.message;}};
     }};
   }
@@ -5685,13 +5789,13 @@ const Guide=(()=>{
  ['quick','plus','افزودن سریع','فکرت را به یک ثبت تبدیل کن',['روی + وسط نوار پایین بزن و مثلاً بنویس: «فردا ساعت ۹ صبح خرید نان».','پیش‌نمایش عنوان، تاریخ، ساعت و نوع ثبت را بخوان. برداشت برنامه را پیش از ثبت اصلاح کن.','برای هزینه بنویس «۲۵۰ هزار تومان بنزین». سپس «ثبت» را بزن؛ تاریخ مالی باید امروز یا گذشته باشد.'],['متن تو: فردا ساعت ۹ خرید نان','پیش‌نمایش: کار · فردا · ۰۹:۰۰','دکمهٔ ثبت']],
  ['calendar','calendar','تقویم و قرارها','برای روزهایت جا باز کن',['از بخش «تقویم»، روز دلخواه را انتخاب کن تا برنامهٔ همان روز را ببینی.','برای قرار، جلسه، تولد یا رویداد از کنترل افزودن رویداد استفاده کن. تاریخ و ساعت را بررسی کن.','تکرار و یادآوری را در فرم تنظیم کن. برای تغییر رویداد، آن را باز و ویرایش کن.'],['تقویم شمسی','روز انتخاب‌شده → برنامهٔ روز','قرار / تولد / جلسه']],
  ['goals','target','هدف‌ها و عادت‌ها','از هدف بزرگ تا قدم کوچک',['در «اهداف و عادت‌ها» هدفی با عنوان روشن و حوزهٔ زندگی بساز.','برای مسیر رسیدن به هدف، عادت و برنامهٔ تکرار تعیین کن. نسخهٔ کوچک عادت کمک می‌کند در روزهای سخت هم قدمی برداری.','انجام عادت‌ها را در فهرست روز ثبت کن و پیشرفت هدف را در بخش خودش مرور کن.'],['هدف من','عادت کوچک و تکرارشونده','امروز: یک قدم ✓']],
- ['work','briefcase','کار و پروژه‌ها','کارهای حرفه‌ای در یک جا',['بخش «کار» برای پروژه‌ها و کارهای کاری است؛ اگر دیده نمی‌شود از تنظیمات بخش‌ها روشنش کن.','در فرم کار، بخش «کاری» را انتخاب و در صورت نیاز پروژه را مشخص کن.','در صفحهٔ امروز با انتخاب «کاری» فهرست کارهای حرفه‌ای را جداگانه مرور کن.'],['پروژه','کار با بخش «کاری»','امروز ← کاری']],
+ ['work','briefcase','کار و پروژه‌ها','کارهای حرفه‌ای در یک جا',['بخش «کار» برای پروژه‌ها و برنامه‌های کاری است؛ اگر دیده نمی‌شود از تنظیمات بخش‌ها روشنش کن.','در فرم کار، بخش «کاری» را انتخاب و در صورت نیاز پروژه را مشخص کن.','در صفحهٔ امروز با انتخاب «کاری» فهرست کارهای حرفه‌ای را جداگانه مرور کن.'],['پروژه','کار با بخش «کاری»','امروز ← کاری']],
  ['finance','wallet','مالی و حساب‌ها','پول‌ها را دقیق ثبت کن',['در «مالی»، حساب‌ها و ماندهٔ شروع را بررسی کن؛ واحد نمایش ریال یا تومان از تنظیمات انتخاب می‌شود.','هزینه یا درآمد را با مبلغ، دسته، حساب و تاریخ ثبت کن. جابه‌جایی پول بین حساب‌ها را انتقال ثبت کن.','گزارش‌ها، بودجه‌ها، قبوض، بدهی‌ها و پس‌انداز را از بخش مالی مرور کن. برای اصلاح، ثبت مربوط را باز کن.'],['مبلغ + دسته','حساب + تاریخ','هزینه / درآمد / انتقال']],
  ['food','food','غذا و آب','ثبت وعده‌ها و نوشیدن آب',['در بخش «غذا و کالری»، غذای مصرف‌شده را برای وعده و مقدار مناسب ثبت کن.','خلاصهٔ انرژی و مواد مغذی بر پایهٔ غذاها و مقدارهای ثبت‌شده است؛ تنظیمات مشخصات و هدف را بررسی کن.','با کنترل آب، لیوان‌های نوشیده‌شده را اضافه یا اصلاح کن. برنامهٔ غذایی و فهرست خرید هم در همین بخش هستند.'],['صبحانه · ناهار · شام','غذا + مقدار → ثبت وعده','آب: + یک لیوان']],
  ['workout','workout','ورزش و تمرین','حرکت با ریتم خودت',['در «ورزش»، تمرین‌ها و برنامه‌های تمرینی را مرور کن یا برنامهٔ خودت را بساز.','جلسه را شروع کن و تمرین‌ها، ست‌ها و مقدار انجام را ثبت کن.','در پایان، جلسه را ذخیره کن تا در سابقه دیده شود. ثبت اندازه‌های بدن در همین بخش در دسترس است.'],['انتخاب برنامه','تمرین ← ست‌ها','پایان و ذخیرهٔ جلسه']],
  ['mood','mood','حال روحی و قدردانی','جایی برای احساس و اتفاق‌های خوب',['در «حال روحی»، یکی از چهره‌ها را بزن؛ این کار همان لحظه حال را ثبت می‌کند.','روی «جزئیات» یا ثبت ایجادشده در «ثبت‌های امروز» بزن. پایین فرم، «سه چیز که بابتش قدردانم» را بنویس و ذخیره کن.','تب «سابقه» برای باز کردن و ویرایش ثبت‌های قبلی است. کارت «از دفتر قدردانی» فقط آخرین نوشته را نشان می‌دهد و دفتر جداگانه نیست.'],['حال روحی → انتخاب چهره','ثبت‌های امروز → باز کردن ثبت','سه چیز که بابتش قدردانم ✎']],
  ['review','chart','مرور هفته','مکث برای نگاه دوباره',['از بخش‌ها یا منوی دسکتاپ وارد «مرور هفته» شو.','آمار هفته را ببین و پرسش‌های مرور را بر اساس تجربهٔ خودت پاسخ بده.','به‌جای کامل بودن، یک تغییر کوچک برای هفتهٔ بعد انتخاب کن. داده‌های ناقص، تصویر کاملی از هفته نمی‌سازند.'],['هفتهٔ گذشته','چه چیزی خوب پیش رفت؟','قدم بعدی من']],
- ['assistant','message','همراه و هوش مصنوعی','پرسیدن، بررسی کردن، تأیید کردن',['«همراه خودنگار» را از صفحهٔ اصلی یا بخش‌ها باز کن. پیشنهادهایی مثل «امروزم را خلاصه کن» در حالت محلی کار می‌کنند.','برای ثبت بنویس «ثبت کن فردا ساعت ۹ صبح خرید نان». جزئیات را ببین و «تأیید و ثبت» را بزن؛ امکان برگرداندن همان ثبت هم هست.','حالت محلی مدل زبانی نیست. حالت آنلاین به سرور و کلید API نیاز دارد؛ از تنظیمات همراه فعال می‌شود و ارسال خلاصهٔ دفتر فقط با اجازهٔ توست.'],['پیام تو','پیش‌نمایش ثبت','تأیید و ثبت ↔ برگرداندن']],
+ ['assistant','sparkle','دستیار هوشمند','پرسیدن، بررسی کردن، تأیید کردن',['«دستیار هوشمند» را از صفحهٔ اصلی یا بخش‌ها باز کن. پیشنهادهایی مثل «امروزم را خلاصه کن» در حالت محلی کار می‌کنند.','برای ثبت بنویس «ثبت کن فردا ساعت ۹ صبح خرید نان». جزئیات را ببین و «تأیید و ثبت» را بزن؛ امکان برگرداندن همان ثبت هم هست.','حالت محلی مدل زبانی نیست. حالت آنلاین به سرور و کلید API نیاز دارد؛ از تنظیمات دستیار فعال می‌شود و ارسال خلاصهٔ دفتر فقط با اجازهٔ توست.'],['پیام تو','پیش‌نمایش ثبت','تأیید و ثبت ↔ برگرداندن']],
  ['appearance','sun','رنگ و چیدمان','دفتر به سلیقهٔ تو',['در تنظیمات ← رنگ و ظاهر، یکی از شش پالت را انتخاب کن؛ انتخاب خودکار ذخیره می‌شود.','حالت روشن، تیره یا خودکار، نمایش تصویرها و کاهش حرکت را به دلخواه تنظیم کن.','در تنظیمات ← بخش‌ها و صفحهٔ اصلی، بخش‌ها را روشن یا خاموش کن و ترتیب کارت‌ها را تغییر بده.'],['۶ پالت رنگی','روشن / تیره / خودکار','چیدمان کارت‌ها']],
  ['notifications','bell','یادآوری‌ها','یادآوری با تنظیم درست',['در تنظیمات ← اعلان‌ها و یادآوری‌ها، ساعت‌ها و موارد دلخواه را تنظیم کن.','در فرم کار یا رویداد، زمان و فاصلهٔ یادآوری را بررسی کن. برای اعلان سیستم، مرورگر باید اجازه داشته باشد.','در نسخهٔ HTML، بررسی یادآوری‌ها هنگام باز بودن برنامه انجام می‌شود؛ با بسته بودن صفحه روی هشدار قطعی حساب نکن.'],['انتخاب موارد','زمان و اجازهٔ مرورگر','برنامه باز → بررسی یادآوری']],
  ['backup','download','پشتیبان و انتقال داده','از نوشته‌هایت یک نسخه داشته باش',['در تنظیمات ← پشتیبان‌گیری و بازگردانی، خروجی بگیر و فایل را در جای مطمئن نگه دار. امکان خروجی رمزدار هم وجود دارد.','قبل از تغییر مرورگر، دستگاه یا فایل برنامه پشتیبان بگیر. داده‌ها خودکار بین دستگاه‌ها همگام نمی‌شوند.','برای انتقال، فایل پشتیبان را در نسخهٔ مقصد وارد کن. بازگردانی داده‌های فعلی مقصد را جایگزین می‌کند؛ پشتیبان خودکار داخل مرورگر جای فایل جداگانه را نمی‌گیرد.'],['دفتر این دستگاه','خروجی پشتیبان → فایل شخصی','ورود فایل در مقصد']],
@@ -6125,7 +6229,7 @@ const Account = (() => {
     return `<div class="reg-grid">${f('first', 'نام', a.first, 'text', 'مثلاً علی', 'autocomplete="given-name"')}${f('last', 'نام خانوادگی', a.last, 'text', 'مثلاً رضایی', 'autocomplete="family-name"')}</div>
       ${f('mobile', 'شمارهٔ موبایل', a.mobile, 'tel', '۰۹۱۲۳۴۵۶۷۸۹', 'inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right"')}
       ${f('email', 'ایمیل', a.email, 'email', 'name@example.com', 'inputmode="email" autocomplete="email" dir="ltr" style="text-align:right"')}
-      <p class="small muted">${icon('lock', 13)} این اطلاعات برای پشتیبانی و فعال‌سازی برنامه به سایت بنیان سافت فرستاده می‌شود و در اختیار کس دیگری قرار نمی‌گیرد.</p>`;
+      <p class="small muted">${icon('lock', 13)} این اطلاعات برای پشتیبانی و فعال‌سازی برنامه به سایت بنیان سافت فرستاده می‌شود و در اختیار شخص دیگری قرار نمی‌گیرد.</p>`;
   }
   /* read + validate; marks bad fields; returns the data or null */
   function readForm(box) {
@@ -6182,6 +6286,10 @@ const Account = (() => {
   App.act('account.edit', edit);
   return { done, ensure, sync, fieldsHtml, readForm, store, status, edit, normMobile, okMobile, okEmail, REG_URL };
 })();
+
+/* v0.2.1: block pinch-zoom on iPhone (Safari ignores user-scalable=no) */
+['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', (e) => { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
 /* Khodnegar — boot */
 (function boot() {
