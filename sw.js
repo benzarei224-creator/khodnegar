@@ -3,7 +3,7 @@
  *   0.1.5-m1  1405/08/04  First version: offline-first cache, versioned by build hash.
  * BUILD is replaced by tools/build_web.py with a hash of index.html, so every new build installs a new cache.
  */
-const BUILD = '0.4.0-18173d02afa1';
+const BUILD = '0.4.1-0c53cb7b9278';
 const CACHE = 'khodnegar-' + BUILD;
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-64.png'];
 

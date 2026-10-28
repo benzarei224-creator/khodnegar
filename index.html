@@ -1,6 +1,17 @@
 <!doctype html>
-<!-- Khodnegar (خودنگار) v0.4.0 — personal life app, single-file HTML build
+<!-- Khodnegar (خودنگار) v0.4.1 — personal life app, single-file HTML build
      Changelog:
+     0.4.1  1405/08/06  Owner phone test + external review (Wednesday 1405/08/06): the "Structured" layout is renamed
+                        «ریتم» (internal id unchanged); assistant chat no longer traps scrolling (the chat is part of
+                        the page, newest message scrolled into view); switching tabs keeps the tab strip below the
+                        header; cycle prediction no longer jumps a whole cycle when the period is late; print includes
+                        all-day events and every item of the week, and the «ریتم» print button offers day / next day /
+                        week of the selected day; quick add understands «۱۱ تا ۱۲ شب» and ranges past midnight;
+                        «بدون تاریخ» always sends the task to the inbox; end times after midnight show «(فردا)»;
+                        routines that pass midnight continue on the next day; with the calendar section off only
+                        work meetings appear; focus button visible at every width; two columns on tablets
+                        (700-999 px) in «ریتم»; honest registration and mood-guide texts; Persian wording fixes and
+                        one informal tone («تو») everywhere; plain-language assistant settings and data preview.
      0.4.0  1405/08/06  Optional Structured-inspired layout with a day rail, coloured task cards,
                         week navigation, free-time gaps and an inbox; independent layout, palette and brightness
                         choices with live previews in the first onboarding step and Settings; six existing palettes
@@ -1056,6 +1067,17 @@ input[type=time]::-webkit-date-and-time-value { text-align: right; }
 .fc-key i.in { background: #16a34a; } .fc-key i.out { background: var(--danger); } .fc-key i.due { background: var(--warn); }
 .fc-key i.din { background: color-mix(in srgb, var(--ok) 30%, var(--surface)); border: 1px solid var(--ok); }
 @media (min-width: 700px) { .fc-d { min-height: 96px; padding: 5px; } .fc-c { font-size: 11px; } .fc-n { font-size: 15px; } .fc-sum { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* v0.4.1 — chat is part of the page; focus button at every width; two columns on tablets in «ریتم» */
+main .assistant-chat, main .chat-panel .assistant-chat { max-height: none; overflow: visible; overscroll-behavior: auto; }
+main .assistant-chat > * { scroll-margin-bottom: 190px; scroll-margin-top: 96px; }
+main .seg { scroll-margin-top: 90px; }
+.sp-card .focus-go { display: grid !important; }
+@media (max-width: 380px) { .sp-card .focus-go { width: 26px; height: 30px; } .sp-card { gap: 3px; } }
+@media (min-width: 700px) and (max-width: 999px) {
+  .sp-layout { grid-template-columns: minmax(0, 1.45fr) minmax(220px, 1fr); gap: 18px; }
+  .sp-secondary { margin-top: 0; }
+  .sp-today-cards .cards { grid-template-columns: 1fr; }
+}
 </style>
 <body>
 <div id="root"></div>
@@ -1470,6 +1492,19 @@ input[type=time]::-webkit-date-and-time-value { text-align: right; }
 
 </script>
 <script>
+/* ---- v0.4.1 helpers ---- */
+/* End time of a block: after midnight it is shown as «۰۱:۳۰ (فردا)» instead of being cut at 23:59 */
+function knEnd(m) { return U.fa(U.minToHM(m)) + (m >= 1440 ? ' (فردا)' : ''); }
+/* After a tab (seg) is pressed and the page is drawn again, keep that tab strip just below the header
+   (a shorter tab could otherwise leave the strip hidden under the sticky header). */
+let knSegIdx = -1;
+document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('main .seg button'); knSegIdx = b ? [...document.querySelectorAll('main .seg')].indexOf(b.closest('.seg')) : -1; }, true);
+function keepSegVisible() {
+  const i = knSegIdx; knSegIdx = -1; if (i < 0) return;
+  const seg = document.querySelectorAll('main .seg')[i], top = document.querySelector('.top'); if (!seg || !top) return;
+  const hb = top.getBoundingClientRect().bottom, st = seg.getBoundingClientRect().top;
+  if (st < hb + 4) window.scrollBy(0, st - hb - 12);
+}
 /* ---- js/core/util.js ---- */
 /* Khodnegar — general helpers */
 const U = (() => {
@@ -1951,7 +1986,7 @@ const DB = (() => {
       let ok=false;
       if(mode==='idb')ok=await idbPut(col,val);
       else if(mode==='ls'){try{localStorage.setItem(LS_PREFIX+col,JSON.stringify(val));ok=true;}catch(e){ok=false;}}
-      if(ok)failed.delete(col);else{failed.add(col);if(Date.now()-lastWarning>10000){lastWarning=Date.now();App.toast('ذخیرهٔ پایدار انجام نشد؛ فضا و دسترسی مرورگر را بررسی کنید و پشتیبان بگیرید.');}}
+      if(ok)failed.delete(col);else{failed.add(col);if(Date.now()-lastWarning>10000){lastWarning=Date.now();App.toast('ذخیرهٔ پایدار انجام نشد؛ فضا و دسترسی مرورگر را بررسی کن و پشتیبان بگیر.');}}
       return ok;
     })();
     pending.add(task);task.finally(()=>pending.delete(task));return task;
@@ -2279,7 +2314,7 @@ const UI = (() => {
       const v = read(frm, fields);
       const miss = fields.filter((f) => f && f.req && (v[f.k] === null || v[f.k] === '' || (typeof v[f.k] === 'number' && isNaN(v[f.k]))));
       frm.querySelectorAll('.fld.bad').forEach((x) => x.classList.remove('bad'));
-      if (miss.length) { miss.forEach((f) => { const x = frm.querySelector(`[data-fk="${f.k}"]`); if (x) x.classList.add('bad'); }); toast('«' + miss[0].label + '» را پر کنید'); return; }
+      if (miss.length) { miss.forEach((f) => { const x = frm.querySelector(`[data-fk="${f.k}"]`); if (x) x.classList.add('bad'); }); toast('«' + miss[0].label + '» را پر کن'); return; }
       const r = await onSave(v, frm);
       if (r !== false) s.close();
     };
@@ -2348,7 +2383,7 @@ const Charts = (() => {
 
 /* ---- js/core/app.js ---- */
 /* Khodnegar — application shell: modules, navigation, actions, rendering */
-const APP_VERSION = '0.4.0';
+const APP_VERSION = '0.4.1';
 const MODULE_ORDER = ['tasks', 'goals', 'work', 'calendar', 'finance', 'food', 'workout', 'mood'];
 const App = (() => {
   const mods = {};
@@ -2400,6 +2435,7 @@ const App = (() => {
     try { fitNums(main); } catch (e) { /* ignore */ }
     window.scrollTo(0, nav ? 0 : (scrollMemo[key] || 0));
     if (!nav) window.scrollTo(0, scrollMemo[key] || 0);
+    if (!nav) keepSegVisible();
   }
   const refresh = () => { render(false); };
   function renderTabs() {
@@ -3271,7 +3307,7 @@ const Goals = (() => {
       { k: 'area', label: 'حوزهٔ زندگی', type: 'select', opts: S.settings.areas.map((a) => [a, a]) },
       { k: 'start', label: 'از تاریخ', type: 'date', half: true },
       { k: 'deadline', label: 'تا تاریخ', type: 'date', half: true },
-      { k: 'why', label: 'چرا این هدف برایم مهم است؟', type: 'textarea', rows: 2, hint: 'در روزهای بی‌انگیزگی همین جمله را می‌بینید.' },
+      { k: 'why', label: 'چرا این هدف برایم مهم است؟', type: 'textarea', rows: 2, hint: 'در روزهای بی‌انگیزگی همین جمله را می‌بینی.' },
       { k: 'hasMetric', label: 'هدف عددی دارد', type: 'toggle', hint: 'مثل وزن، پس‌انداز یا تعداد کتاب' },
       { k: 'unit', label: 'واحد', ph: 'کیلوگرم', half: true },
       { k: 'mstart', label: 'مقدار شروع', type: 'num', half: true },
@@ -3324,7 +3360,7 @@ const Goals = (() => {
     if (tab === 'goals') {
       const gs = S.goals.filter((g) => (g.scope || 'personal') === scope || (scope === 'personal' && !App.on('work')));
       const act = gs.filter((g) => g.status !== 'done'), done = gs.filter((g) => g.status === 'done');
-      if (!gs.length) body += UI.empty('target', 'هنوز هدفی ننوشته‌اید. هر هدف را به عادت‌های روزانه و مراحل کوچک بشکنید تا در فهرست کارهای روزتان بیاید.', `<button class="btn primary" data-a="goals.newGoal" data-scope="${scope}">${icon('plus', 18)} هدف جدید</button>`);
+      if (!gs.length) body += UI.empty('target', 'هنوز هدفی ننوشته‌ای. هر هدف را به عادت‌های روزانه و مراحل کوچک بشکن تا در فهرست کارهای روزت بیاید.', `<button class="btn primary" data-a="goals.newGoal" data-scope="${scope}">${icon('plus', 18)} هدف جدید</button>`);
       else {
         const byArea = U.groupBy(act, (g) => g.area || 'سایر');
         Object.entries(byArea).forEach(([a, list]) => { body += UI.sec(U.esc(a), `<div class="list">${list.map(goalCard).join('')}</div>`); });
@@ -3350,7 +3386,7 @@ const Goals = (() => {
     return `<div class="row" style="gap:3px">${out}</div>`;
   }
   function habitsList(hs) {
-    if (!hs.length) return UI.empty('repeat', 'عادتی ثبت نشده. عادت‌ها هر روز (یا روزهایی که انتخاب می‌کنید) خودکار در فهرست کارهای امروز می‌آیند.', `<button class="btn primary" data-a="goals.newHabit">${icon('plus', 18)} عادت جدید</button>`);
+    if (!hs.length) return UI.empty('repeat', 'عادتی ثبت نشده. عادت‌ها هر روز (یا روزهایی که انتخاب می‌کنی) خودکار در فهرست کارهای امروز می‌آیند.', `<button class="btn primary" data-a="goals.newHabit">${icon('plus', 18)} عادت جدید</button>`);
     return `<div class="list">${hs.map((h) => { const st = streak(h), r = rate(h); return `<button class="li" data-a="goals.editHabit" data-id="${h.id}" style="--c:var(--c-goals)"><div class="li-t"><b>${U.esc(h.title)}</b><small><span>${Rec.label(hrec(h))}</span>${h.time ? `<span>${U.fa(h.time)}</span>` : ''}${r !== null ? `<span>${U.fa(r)}٪ در ۳۰ روز</span>` : ''}</small>${weekStrip(h)}</div><div class="li-end">${st ? `<span class="pill amber">${icon('flame', 12)} ${U.fa(st)}</span>` : ''}</div></button>`; }).join('')}</div>`;
   }
   function detailScreen(p) {
@@ -3371,9 +3407,9 @@ const Goals = (() => {
     body += UI.sec('مراحل', `${ms.length ? `<div class="list">${ms.map((m, i) => {
       const tasks = S.tasks.filter((t) => t.goalId === g.id && t.milestoneId === m.id);
       return `<div class="li ${m.done ? 'done' : ''}" style="--c:${g.color}"><button class="ck ${m.done ? 'on' : ''}" data-a="goals.msToggle" data-id="${g.id}" data-i="${i}" aria-label="تیک مرحله">${icon('check', 16)}</button><div class="li-t" role="button" tabindex="0" data-a="goals.msEdit" data-id="${g.id}" data-i="${i}"><b>${U.esc(m.title)}</b><small>${m.date ? `<span>${J.fmt(m.date, 'short')}</span>` : ''}${tasks.length ? `<span>${U.fa(tasks.filter((t) => t.done).length)}/${U.fa(tasks.length)} کار</span>` : ''}</small></div><button class="icon-btn" data-a="goals.msTask" data-id="${g.id}" data-mid="${m.id}" aria-label="افزودن کار به این مرحله">${icon('plus', 18)}</button></div>`;
-    }).join('')}</div>` : '<p class="muted small">هدف را به چند مرحلهٔ کوچک بشکنید؛ پیشرفت هدف از تیک مراحل حساب می‌شود.</p>'}<button class="btn sm ghost" data-a="goals.msAdd" data-id="${g.id}">${icon('plus', 16)} مرحلهٔ جدید</button>`);
+    }).join('')}</div>` : '<p class="muted small">هدف را به چند مرحلهٔ کوچک بشکن؛ پیشرفت هدف از تیک مراحل حساب می‌شود.</p>'}<button class="btn sm ghost" data-a="goals.msAdd" data-id="${g.id}">${icon('plus', 16)} مرحلهٔ جدید</button>`);
     const hs = S.habits.filter((h) => h.goalId === g.id);
-    body += UI.sec('عادت‌های روزانهٔ این هدف', `${hs.length ? habitsList(hs) : '<p class="muted small">کاری که باید هر روز (یا چند روز در هفته) برای این هدف انجام دهید؛ خودکار در فهرست امروز می‌آید.</p>'}<button class="btn sm ghost" data-a="goals.newHabit" data-goal="${g.id}">${icon('plus', 16)} عادت برای این هدف</button>`);
+    body += UI.sec('عادت‌های روزانهٔ این هدف', `${hs.length ? habitsList(hs) : '<p class="muted small">کاری که باید هر روز (یا چند روز در هفته) برای این هدف انجام بده؛ خودکار در فهرست امروز می‌آید.</p>'}<button class="btn sm ghost" data-a="goals.newHabit" data-goal="${g.id}">${icon('plus', 16)} عادت برای این هدف</button>`);
     const tasks = S.tasks.filter((t) => t.goalId === g.id && !t.milestoneId);
     const today = J.today();
     body += UI.sec('کارهای این هدف', `${tasks.length ? `<div class="list">${tasks.map((t) => Agenda.itemHtml(Tasks.item({ t, done: Tasks.doneOn(t, t.date || today) }, t.date || today), t.date || today)).join('')}</div>` : ''}<button class="btn sm ghost" data-a="goals.goalTask" data-id="${g.id}">${icon('plus', 16)} کار یک‌باره</button>`);
@@ -3397,7 +3433,7 @@ const Goals = (() => {
     toggle: (ref, iso) => toggleHabit(ref, iso),
     card() {
       const act = S.goals.filter((g) => g.status === 'active' && (g.scope || 'personal') === 'personal').slice(0, 3);
-      if (!act.length) return `<button class="mcard" data-a="nav.go" data-s="goals" style="--c:${C}"><div class="mcard-h">${icon('target', 16)}<span class="grow">اهداف</span></div><p class="small muted">اولین هدفتان را بنویسید.</p></button>`;
+      if (!act.length) return `<button class="mcard" data-a="nav.go" data-s="goals" style="--c:${C}"><div class="mcard-h">${icon('target', 16)}<span class="grow">اهداف</span></div><p class="small muted">اولین هدفت را بنویس.</p></button>`;
       return `<button class="mcard wide" data-a="nav.go" data-s="goals" style="--c:${C}"><div class="mcard-h">${icon('target', 16)}<span class="grow">اهداف</span></div>${act.map((g) => { const p = progress(g); return `<div><div class="row small"><span class="grow">${U.esc(g.title)}</span><b class="num">${U.fa(p)}٪</b></div>${UI.prog(p, g.color)}</div>`; }).join('')}</button>`;
     },
     acts: {
@@ -3409,7 +3445,7 @@ const Goals = (() => {
       habitMenu: (d) => habitMenu(S.habits.find((h) => h.id === d.id), d.date),
       msAdd: (d) => msEdit(G(d.id)),
       msEdit: (d) => msEdit(G(d.id), +d.i),
-      msToggle: (d) => { const g = G(d.id); const m = g.milestones[+d.i]; m.done = !m.done; if (m.done) Score.cheer(); DB.save('goals'); App.refresh(); if (m.done && g.milestones.every((x) => x.done)) App.toast('همهٔ مراحل انجام شد! هدف را محقق‌شده علامت بزنید.'); },
+      msToggle: (d) => { const g = G(d.id); const m = g.milestones[+d.i]; m.done = !m.done; if (m.done) Score.cheer(); DB.save('goals'); App.refresh(); if (m.done && g.milestones.every((x) => x.done)) App.toast('همهٔ مراحل انجام شد! هدف را محقق‌شده علامت بزن.'); },
       msTask: (d) => { const g = G(d.id); Tasks.edit(null, { goalId: g.id, milestoneId: d.mid, scope: g.scope || 'personal' }); },
       goalTask: (d) => { const g = G(d.id); Tasks.edit(null, { goalId: g.id, scope: g.scope || 'personal' }); },
       status: (d) => { const g = G(d.id); g.status = d.v; if (d.v === 'done') { g.doneAt = J.today(); App.toast('تبریک! هدف «' + g.title + '» محقق شد.'); } DB.save('goals'); App.refresh(); },
@@ -3468,7 +3504,7 @@ const Work = (() => {
       body += Tasks && App.mods.tasks ? '' : '';
       const open = S.tasks.filter((t) => t.scope === 'work' && (Tasks.isRec(t) || !t.done));
       const byProj = U.groupBy(open, (t) => t.projectId || '');
-      if (!open.length) body += UI.empty('tasks', 'برنامهٔ کاری بازی ندارید.');
+      if (!open.length) body += UI.empty('tasks', 'برنامهٔ کاری انجام‌نشده‌ای نداری.');
       Object.entries(byProj).forEach(([pid, ts]) => {
         const p = P(pid);
         body += UI.sec(p ? U.esc(p.title) : 'بدون پروژه', `<div class="list">${ts.map((t) => { const d = Tasks.isRec(t) ? (Rec.next(Tasks.recOf(t), today) || today) : (t.date || today); const it = Tasks.item({ t, done: Tasks.doneOn(t, d) }, d); if (t.date) it.sub = J.rel(d) + (it.sub ? ' · ' + it.sub : ''); return Agenda.itemHtml(it, d); }).join('')}</div>`);
@@ -3476,7 +3512,7 @@ const Work = (() => {
       body += UI.fab('tasks.new', 'برنامهٔ کاری جدید', 'data-scope="work"');
     } else if (tab === 'projects') {
       const ps = S.projects.slice().sort(U.by((p) => ({ active: 0, hold: 1, done: 2 }[p.status])));
-      body += ps.length ? `<div class="list">${ps.map((p) => { const pr = projProgress(p); const n = S.tasks.filter((t) => t.projectId === p.id && !t.done).length; return `<button class="li" data-a="nav.go" data-s="work/project" data-p='${JSON.stringify({ id: p.id })}' style="--c:${p.color}"><span class="li-ic">${icon('folder')}</span><div class="li-t"><b>${U.esc(p.title)}</b><small><span>${{ active: 'در جریان', hold: 'متوقف', done: 'تمام‌شده' }[p.status]}</span><span>${U.fa(n)} کار باز</span>${p.deadline ? `<span>مهلت ${J.fmt(p.deadline, 'short')}</span>` : ''}</small>${UI.prog(pr, p.color)}</div></button>`; }).join('')}</div>` : UI.empty('folder', 'پروژه‌ای ثبت نشده. کارهای کاری را زیر پروژه‌ها دسته‌بندی کنید.');
+      body += ps.length ? `<div class="list">${ps.map((p) => { const pr = projProgress(p); const n = S.tasks.filter((t) => t.projectId === p.id && !t.done).length; return `<button class="li" data-a="nav.go" data-s="work/project" data-p='${JSON.stringify({ id: p.id })}' style="--c:${p.color}"><span class="li-ic">${icon('folder')}</span><div class="li-t"><b>${U.esc(p.title)}</b><small><span>${{ active: 'در جریان', hold: 'متوقف', done: 'تمام‌شده' }[p.status]}</span><span>${U.fa(n)} کار مانده</span>${p.deadline ? `<span>مهلت ${J.fmt(p.deadline, 'short')}</span>` : ''}</small>${UI.prog(pr, p.color)}</div></button>`; }).join('')}</div>` : UI.empty('folder', 'پروژه‌ای ثبت نشده. کارهای کاری را زیر پروژه‌ها دسته‌بندی کن.');
       body += UI.fab('work.newProject', 'پروژهٔ جدید');
     } else if (tab === 'goals') {
       const gs = S.goals.filter((g) => g.scope === 'work');
@@ -3701,7 +3737,7 @@ const Calendar = (() => {
     if (Platform.calendar.available) {
       return `<div class="set-group"><div class="set-row"><span class="li-ic" style="--c:var(--c-cal)">${icon('phone')}</span><div class="grow"><b>همگام با تقویم گوشی</b><small>رویدادهای گوشی اینجا دیده می‌شوند و رویدادهای خودنگار به تقویم گوشی می‌روند.</small></div><label class="switch"><input type="checkbox" data-ch="calendar.sync" ${S.settings.calSync ? 'checked' : ''}><span></span></label></div></div>`;
     }
-    return `<div class="notice info">${icon('phone', 18)}<div><b>اتصال به تقویم گوشی</b><br><span class="small">در نسخهٔ اندروید خودنگار، رویدادهای تقویم گوشی (مثل Google Calendar) اینجا نمایش داده می‌شوند و رویدادهای شما هم به تقویم گوشی اضافه می‌شوند. در نسخهٔ مرورگر این امکان وجود ندارد.</span></div></div>`;
+    return `<div class="notice info">${icon('phone', 18)}<div><b>اتصال به تقویم گوشی</b><br><span class="small">در نسخهٔ اندروید خودنگار، رویدادهای تقویم گوشی (مثل Google Calendar) اینجا نمایش داده می‌شوند و رویدادهایت هم به تقویم گوشی اضافه می‌شوند. در نسخهٔ مرورگر این امکان وجود ندارد.</span></div></div>`;
   }
   App.mod('calendar', {
     title: 'تقویم', icon: 'calendar', c: C, desc: 'تقویم شمسی با تعطیلات رسمی، رویدادها، جلسه‌ها، تولد و سالگرد',
@@ -3714,7 +3750,7 @@ const Calendar = (() => {
       const hol = Holidays.get(today);
       const nextB = S.events.filter((e) => e.kind === 'birthday').map((e) => ({ e, d: Rec.next(recOf(e), J.addDays(today, 1), 40) })).filter((x) => x.d).sort(U.by((x) => x.d))[0];
       return `<button class="mcard wide" data-a="nav.tab" data-tab="calendar" style="--c:${C}"><div class="mcard-h">${icon('calendar', 16)}<span class="grow">برنامهٔ امروز</span>${hol.length ? `<span class="hol-note">${U.esc(hol[0].title)}</span>` : ''}</div>
-        ${evs.length ? evs.slice(0, 4).map((e) => `<div class="row small"><b class="num" style="min-width:42px">${e.allDay || !e.time ? 'روز' : U.fa(e.time)}</b><span class="grow">${U.esc(e.title)}</span>${e.kind === 'meeting' ? '<span class="pill">جلسه</span>' : ''}</div>`).join('') : '<p class="small muted">رویدادی برای امروز ندارید.</p>'}
+        ${evs.length ? evs.slice(0, 4).map((e) => `<div class="row small"><b class="num" style="min-width:42px">${e.allDay || !e.time ? 'روز' : U.fa(e.time)}</b><span class="grow">${U.esc(e.title)}</span>${e.kind === 'meeting' ? '<span class="pill">جلسه</span>' : ''}</div>`).join('') : '<p class="small muted">رویدادی برای امروز نداری.</p>'}
         ${nextB ? `<p class="small muted">${icon('gift', 13)} تولد بعدی: ${U.esc(nextB.e.person || nextB.e.title)} · ${J.rel(nextB.d)}</p>` : ''}</button>`;
     },
     acts: {
@@ -3812,7 +3848,7 @@ const Finance = (() => {
         });
       },
       onSave: (v) => {
-        if (!(v.amount > 0)) { App.toast('مبلغ را درست وارد کنید'); return false; }
+        if (!(v.amount > 0)) { App.toast('مبلغ را درست وارد کن'); return false; }
         if (v.type === 'trf' && v.accountId === v.toAccountId) { App.toast('حساب مبدأ و مقصد یکی است'); return false; }
         Object.assign(t, { type: v.type, amount: v.amount, catId: v.type === 'exp' ? v.catExp : v.type === 'inc' ? v.catInc : '', accountId: v.accountId, toAccountId: v.type === 'trf' ? v.toAccountId : '', date: v.date, note: v.note });
         if (isNew) S.txs.push(t);
@@ -3935,7 +3971,7 @@ const Finance = (() => {
     const left = Math.max(0, s.target - saved(s));
     const months = s.deadline ? Math.max(1, Math.ceil(J.diff(s.deadline, J.today()) / 30)) : null;
     UI.formSheet({ title: 'واریز به «' + s.title + '»', intro: `<p class="small muted">مانده تا هدف: ${U.money(left)}${months ? ` · برای رسیدن به موقع، ماهی حدود ${U.money(Math.ceil(left / months))}` : ''}</p>`,
-      fields: [{ k: 'amount', label: 'مبلغ (برای برداشت عدد منفی نزنید؛ گزینهٔ زیر را بزنید)', type: 'money', req: true }, { k: 'out', label: 'برداشت از پس‌انداز', type: 'toggle' }, { k: 'date', label: 'تاریخ', type: 'date' }], vals: { date: J.today() },
+      fields: [{ k: 'amount', label: 'مبلغ (برای برداشت عدد منفی نزن؛ گزینهٔ زیر را بزن)', type: 'money', req: true }, { k: 'out', label: 'برداشت از پس‌انداز', type: 'toggle' }, { k: 'date', label: 'تاریخ', type: 'date' }], vals: { date: J.today() },
       onSave: (v) => { s.deposits = s.deposits || []; s.deposits.push({ date: v.date || J.today(), amount: v.out ? -v.amount : v.amount }); DB.save('savings'); App.refresh(); if (saved(s) >= s.target) App.toast('هدف پس‌انداز کامل شد!'); } });
   }
   /* ---------- SMS parsing (Iranian bank messages) ---------- */
@@ -3999,23 +4035,23 @@ const Finance = (() => {
   /* Android 13+: an app installed outside the store needs «Allow restricted settings» before SMS can be allowed */
   function smsHelp() {
     const s = UI.sheet({ title: 'اجازهٔ خواندن پیامک',
-      body: `<div class="stack small"><p>اندروید برای برنامه‌هایی که خارج از بازار نصب شده‌اند، اجازهٔ پیامک را قفل می‌کند. فقط یک بار این کارها را انجام دهید:</p>
+      body: `<div class="stack small"><p>اندروید برای برنامه‌هایی که خارج از بازار نصب شده‌اند، اجازهٔ پیامک را قفل می‌کند. فقط یک بار این کارها را انجام بده:</p>
         <ol class="guide-steps">
-          <li>دکمهٔ «باز کردن تنظیمات خودنگار» را در پایین بزنید.</li>
-          <li>در صفحهٔ باز شده، بالا روی <b>سه‌نقطه (⋮)</b> بزنید و <b>«اجازه دادن به تنظیمات محدود»</b> (<bdi dir="ltr">Allow restricted settings</bdi>) را بزنید و با رمز یا اثر انگشت گوشی تأیید کنید.</li>
-          <li>همان‌جا وارد <b>«مجوزها»</b> (<bdi dir="ltr">Permissions</bdi>) شوید ← <b>«پیامک»</b> (<bdi dir="ltr">SMS</bdi>) ← <b>«مجاز»</b>.</li>
-          <li>به خودنگار برگردید و دوباره «ثبت از پیامک بانک» را باز کنید.</li>
+          <li>دکمهٔ «باز کردن تنظیمات خودنگار» را در پایین بزن.</li>
+          <li>در صفحهٔ باز شده، بالا روی <b>سه‌نقطه (⋮)</b> بزن و <b>«اجازه دادن به تنظیمات محدود»</b> (<bdi dir="ltr">Allow restricted settings</bdi>) را بزن و با رمز یا اثر انگشت گوشی تأیید کن.</li>
+          <li>همان‌جا وارد <b>«مجوزها»</b> (<bdi dir="ltr">Permissions</bdi>) شو ← <b>«پیامک»</b> (<bdi dir="ltr">SMS</bdi>) ← <b>«مجاز»</b>.</li>
+          <li>به خودنگار برگرد و دوباره «ثبت از پیامک بانک» را باز کن.</li>
         </ol>
-        <p class="muted">اگر سه‌نقطه یا آن گزینه را ندیدید: یک بار دکمهٔ «اجازهٔ خواندن پیامک» را در خودنگار بزنید و پیام هشدار را ببندید، بعد دوباره به تنظیمات بروید. نام گزینه‌ها در گوشی‌های مختلف کمی فرق دارد.</p>
-        <p class="muted">بدون این اجازه هم می‌توانید متن پیامک را کپی کنید و در کادر «متن پیامک» بچسبانید.</p></div>`,
+        <p class="muted">اگر سه‌نقطه یا آن گزینه را ندیدی: یک بار دکمهٔ «اجازهٔ خواندن پیامک» را در خودنگار بزن و پیام هشدار را ببند، بعد دوباره به تنظیمات برو. نام گزینه‌ها در گوشی‌های مختلف کمی فرق دارد.</p>
+        <p class="muted">بدون این اجازه هم می‌توانی متن پیامک را کپی کنی و در کادر «متن پیامک» بچسبانی.</p></div>`,
       foot: '<button class="btn primary" data-open>باز کردن تنظیمات خودنگار</button>' });
-    s.el.querySelector('[data-open]').onclick = async () => { const ok = await Platform.sms.openSettings(); if (!ok) App.toast('تنظیمات باز نشد؛ از تنظیمات گوشی ← برنامه‌ها ← خودنگار وارد شوید'); };
+    s.el.querySelector('[data-open]').onclick = async () => { const ok = await Platform.sms.openSettings(); if (!ok) App.toast('تنظیمات باز نشد؛ از تنظیمات گوشی ← برنامه‌ها ← خودنگار وارد شو'); };
   }
   function smsSheet() {
     const native = Platform.sms.available;
     const s = UI.sheet({
       title: 'ثبت از پیامک بانک',
-      body: `${native ? '<div data-smsperm></div>' : `<div class="notice info">${icon('message', 18)}<div class="small">در نسخهٔ اندروید پیامک‌های بانک خودکار خوانده و پیشنهاد می‌شوند. اینجا متن پیامک را کپی و در کادر زیر بچسبانید (چند پیامک با یک خط خالی جدا شوند).</div></div>`}
+      body: `${native ? '<div data-smsperm></div>' : `<div class="notice info">${icon('message', 18)}<div class="small">در نسخهٔ اندروید پیامک‌های بانک خودکار خوانده و پیشنهاد می‌شوند. اینجا متن پیامک را کپی و در کادر زیر بچسبان (چند پیامک با یک خط خالی جدا شوند).</div></div>`}
         <div class="fld" style="margin-top:10px"><label for="smsText">متن پیامک</label><textarea id="smsText" rows="5" placeholder="بانک ملت&#10;برداشت: 1,250,000&#10;مانده: 8,400,000&#10;1405/08/02-14:30"></textarea></div>
         <div data-res class="stack" style="margin-top:12px"></div>`,
       foot: '<button class="btn primary" data-parse>بررسی پیامک</button>',
@@ -4027,7 +4063,7 @@ const Finance = (() => {
       const paint = (st) => {
         box.innerHTML = st === 'granted'
           ? `<p class="small ok-t">${icon('check', 14)} خواندن خودکار پیامک‌های بانک فعال است.</p>`
-          : `<div class="notice info sms-perm">${icon('message', 18)}<div class="grow small"><b>خواندن خودکار پیامک بانک</b><br>با اجازهٔ شما، پیامک‌های بانکی تازه خودکار اینجا می‌آیند. بدون اجازه هم می‌توانید متن پیامک را کپی کنید و پایین بچسبانید.<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn sm mod" data-smsask>اجازهٔ خواندن پیامک</button><button class="btn sm ghost" data-smshelp>اجازه داده نمی‌شود؟</button></div></div></div>`;
+          : `<div class="notice info sms-perm">${icon('message', 18)}<div class="grow small"><b>خواندن خودکار پیامک بانک</b><br>با اجازهٔ تو، پیامک‌های بانکی تازه خودکار اینجا می‌آیند. بدون اجازه هم می‌توانی متن پیامک را کپی کنی و پایین بچسبانی.<div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="btn sm mod" data-smsask>اجازهٔ خواندن پیامک</button><button class="btn sm ghost" data-smshelp>اجازه داده نمی‌شود؟</button></div></div></div>`;
       };
       Platform.sms.permission().then(paint);
       box.addEventListener('click', async (e) => {
@@ -4040,8 +4076,8 @@ const Finance = (() => {
       });
     }
     const draw = () => {
-      if (!found.length) { res.innerHTML = '<p class="muted small">مبلغی در این متن پیدا نشد. مطمئن شوید پیامک شامل «برداشت» یا «واریز» و مبلغ است.</p>'; return; }
-      res.innerHTML = `<p class="small muted">مبلغ پیامک‌های بانکی به ریال است. موارد زیر را بررسی و تأیید کنید:</p>` + found.map((f, i) => `<div class="card flat row"><div class="grow"><b class="${f.type === 'inc' ? 'ok-t' : ''}">${f.type === 'inc' ? 'واریز' : 'برداشت'} ${U.money(f.amount, { force: true })}</b><p class="small muted">${U.esc(catName(f.catId))} · ${J.fmt(f.date, 'short')}${f.bank ? ' · ' + U.esc(f.bank) : ''}</p></div><button class="btn sm mod" data-ok="${i}">${f.saved ? 'ثبت شد' : 'ثبت'}</button></div>`).join('');
+      if (!found.length) { res.innerHTML = '<p class="muted small">مبلغی در این متن پیدا نشد. مطمئن شو پیامک شامل «برداشت» یا «واریز» و مبلغ است.</p>'; return; }
+      res.innerHTML = `<p class="small muted">مبلغ پیامک‌های بانکی به ریال است. موارد زیر را بررسی و تأیید کن:</p>` + found.map((f, i) => `<div class="card flat row"><div class="grow"><b class="${f.type === 'inc' ? 'ok-t' : ''}">${f.type === 'inc' ? 'واریز' : 'برداشت'} ${U.money(f.amount, { force: true })}</b><p class="small muted">${U.esc(catName(f.catId))} · ${J.fmt(f.date, 'short')}${f.bank ? ' · ' + U.esc(f.bank) : ''}</p></div><button class="btn sm mod" data-ok="${i}">${f.saved ? 'ثبت شد' : 'ثبت'}</button></div>`).join('');
     };
     s.el.querySelector('[data-parse]').onclick = () => { found = parseSms(s.el.querySelector('#smsText').value); draw(); };
     res.addEventListener('click', (e) => {
@@ -4063,7 +4099,7 @@ const Finance = (() => {
     c = c || Object.assign({ id: U.uid(), name: '', type: 'exp', parent: null, color: UI.COLORS[0], kw: [] }, preset);
     const isRoot = !c.parent;
     UI.formSheet({ title: isNew ? (c.parent ? 'زیردستهٔ جدید' : 'دستهٔ جدید') : 'ویرایش دسته',
-      fields: [{ k: 'name', label: 'نام', req: true }, { k: 'kw', label: 'کلیدواژه‌ها', ph: 'با ویرگول جدا کنید: اسنپ، تاکسی', hint: 'اگر این کلمه‌ها در توضیح یا پیامک بیاید، همین دسته پیشنهاد می‌شود.' }, isRoot ? { k: 'color', label: 'رنگ', type: 'color' } : null, isRoot && c.type === 'exp' ? { k: 'budget', label: 'بودجهٔ ماهانه', type: 'money', hint: 'خالی = بدون بودجه' } : null].filter(Boolean),
+      fields: [{ k: 'name', label: 'نام', req: true }, { k: 'kw', label: 'کلیدواژه‌ها', ph: 'با ویرگول جدا کن: اسنپ، تاکسی', hint: 'اگر این کلمه‌ها در توضیح یا پیامک بیاید، همین دسته پیشنهاد می‌شود.' }, isRoot ? { k: 'color', label: 'رنگ', type: 'color' } : null, isRoot && c.type === 'exp' ? { k: 'budget', label: 'بودجهٔ ماهانه', type: 'money', hint: 'خالی = بدون بودجه' } : null].filter(Boolean),
       vals: Object.assign({}, c, { kw: (c.kw || []).join('، '), budget: S.budgets[c.id] || null }),
       onSave: (v) => { c.name = v.name; c.kw = (v.kw || '').split(/[،,]/).map((x) => x.trim()).filter(Boolean); if (v.color) c.color = v.color; if (isRoot && c.type === 'exp') { if (v.budget) S.budgets[c.id] = v.budget; else delete S.budgets[c.id]; } if (isNew) S.cats.push(c); DB.save('cats', 'budgets'); App.refresh(); if (then) setTimeout(() => then(c), 50); },
       onDelete: isNew ? null : async () => {
@@ -4102,7 +4138,7 @@ const Finance = (() => {
       const up = upcomingBills(14);
       if (up.length) body += UI.sec('سررسیدهای نزدیک', `<div class="list">${up.slice(0, 5).map(({ b, d, overdue }) => billRow(b, d, overdue)).join('')}</div>`, `<button class="link" data-a="calendar.fin">${icon('calendar', 15)} تقویم مالی</button>`);
       const recent = S.txs.slice().sort(U.by((x) => x.date + x.id, -1)).slice(0, 6);
-      body += UI.sec('آخرین تراکنش‌ها', recent.length ? `<div class="list">${recent.map(txRow).join('')}</div>` : UI.empty('wallet', 'هنوز تراکنشی ثبت نشده. از دکمهٔ «هزینه» یا «افزودن سریع» استفاده کنید؛ مثلاً «۲۵۰ هزار بنزین».'), '<button class="link" data-a="finance.tab" data-v="txs">همه</button>');
+      body += UI.sec('آخرین تراکنش‌ها', recent.length ? `<div class="list">${recent.map(txRow).join('')}</div>` : UI.empty('wallet', 'هنوز تراکنشی ثبت نشده. از دکمهٔ «هزینه» یا «افزودن سریع» استفاده کن؛ مثلاً «۲۵۰ هزار بنزین».'), '<button class="link" data-a="finance.tab" data-v="txs">همه</button>');
     } else if (tab === 'txs') {
       body += `<div class="card">${monthNav()}</div>`;
       const list = t.txs.slice().sort(U.by((x) => x.date + x.id, -1));
@@ -4110,12 +4146,12 @@ const Finance = (() => {
       Object.entries(U.groupBy(list, (x) => x.date)).forEach(([d, xs]) => { const dayExp = U.sum(xs.filter((x) => x.type === 'exp'), (x) => x.amount); body += UI.sec(`${J.fmt(d, 'wd')}`, `<div class="list">${xs.map(txRow).join('')}</div>`, dayExp ? `<span class="small muted num">هزینه: ${U.money(dayExp)}</span>` : ''); });
       body += UI.fab('finance.newTx', 'تراکنش جدید', 'data-type="exp"');
     } else if (tab === 'cats') {
-      body += `<div class="row"><button class="btn mod grow" data-a="finance.newCat" data-type="exp">${icon('plus', 18)} دستهٔ هزینه</button><button class="btn ghost grow" data-a="finance.newCat" data-type="inc">${icon('plus', 18)} دستهٔ درآمد</button></div><p class="small muted">برای ویرایش یا حذف، روی هر دسته بزنید.</p>`;
+      body += `<div class="row"><button class="btn mod grow" data-a="finance.newCat" data-type="exp">${icon('plus', 18)} دستهٔ هزینه</button><button class="btn ghost grow" data-a="finance.newCat" data-type="inc">${icon('plus', 18)} دستهٔ درآمد</button></div><p class="small muted">برای ویرایش یا حذف، روی هر دسته بزن.</p>`;
       body += catsScreen().body;
     } else if (tab === 'budget') {
       body += `<div class="card">${monthNav()}</div>`;
       const rows = budgetRows(y, m, 99);
-      body += rows || UI.empty('piggy', 'برای هیچ دسته‌ای بودجه تعیین نشده. روی دسته‌ها بزنید و بودجهٔ ماهانه بگذارید؛ نزدیک سقف که شوید هشدار می‌گیرید.');
+      body += rows || UI.empty('piggy', 'برای هیچ دسته‌ای بودجه تعیین نشده. روی دسته‌ها بزن و بودجهٔ ماهانه بگذار؛ نزدیک سقف که برسی، هشدار می‌گیری.');
       body += UI.sec('تعیین بودجه برای دسته‌ها', `<div class="list">${S.cats.filter((c) => c.type === 'exp' && !c.parent).map((c) => `<button class="li" data-a="finance.editCat" data-id="${c.id}" style="--c:${c.color}"><span class="li-ic">${icon('folder')}</span><div class="li-t"><b>${U.esc(c.name)}</b></div><span class="li-end small ${S.budgets[c.id] ? '' : 'muted'}">${S.budgets[c.id] ? U.money(S.budgets[c.id]) : 'بدون بودجه'}</span></button>`).join('')}</div>`);
     } else if (tab === 'bills') {
       const act = S.bills.filter((b) => billNext(b));
@@ -4129,12 +4165,12 @@ const Finance = (() => {
       const open = S.debts.filter((d) => !d.settled);
       const lent = U.sum(open.filter((d) => d.dir === 'lent'), debtLeft), bor = U.sum(open.filter((d) => d.dir === 'borrowed'), debtLeft);
       body += `<div class="grid2"><div class="stat"><small>طلب من</small><b class="ok-t">${U.money(lent)}</b></div><div class="stat"><small>بدهی من</small><b class="danger-t">${U.money(bor)}</b></div></div>`;
-      body += open.length ? `<div class="list">${open.map(debtRow).join('')}</div>` : UI.empty('handshake', 'طلب یا بدهی بازی ندارید.');
+      body += open.length ? `<div class="list">${open.map(debtRow).join('')}</div>` : UI.empty('handshake', 'طلب یا بدهی تسویه‌نشده‌ای نداری.');
       const done = S.debts.filter((d) => d.settled);
       if (done.length) body += `<details class="more"><summary>تسویه‌شده (${U.fa(done.length)})</summary><div class="list">${done.map(debtRow).join('')}</div></details>`;
       body += UI.fab('finance.newDebt', 'طلب یا بدهی جدید');
     } else if (tab === 'savings') {
-      body += S.savings.length ? `<div class="stack">${S.savings.map((s) => { const v = saved(s), p = U.pct(v, s.target); return `<div class="card stack" style="--mod:${s.color}"><div class="row"><span class="li-ic" style="--c:${s.color}">${icon('piggy')}</span><div class="grow"><b>${U.esc(s.title)}</b><p class="small muted">${U.money(v)} از ${U.money(s.target)}${s.deadline ? ' · تا ' + J.fmt(s.deadline, 'short') : ''}</p></div><button class="icon-btn" data-a="finance.editSaving" data-id="${s.id}" aria-label="ویرایش">${icon('edit', 18)}</button></div>${UI.prog(p, s.color)}<div class="row"><span class="small grow">${U.fa(p)}٪</span><button class="btn sm mod" data-a="finance.deposit" data-id="${s.id}">${icon('plus', 16)} واریز</button></div></div>`; }).join('')}</div>` : UI.empty('piggy', 'برای خرید یا هدف بزرگ‌تان پس‌انداز تعریف کنید و قدم‌به‌قدم پر کنید.');
+      body += S.savings.length ? `<div class="stack">${S.savings.map((s) => { const v = saved(s), p = U.pct(v, s.target); return `<div class="card stack" style="--mod:${s.color}"><div class="row"><span class="li-ic" style="--c:${s.color}">${icon('piggy')}</span><div class="grow"><b>${U.esc(s.title)}</b><p class="small muted">${U.money(v)} از ${U.money(s.target)}${s.deadline ? ' · تا ' + J.fmt(s.deadline, 'short') : ''}</p></div><button class="icon-btn" data-a="finance.editSaving" data-id="${s.id}" aria-label="ویرایش">${icon('edit', 18)}</button></div>${UI.prog(p, s.color)}<div class="row"><span class="small grow">${U.fa(p)}٪</span><button class="btn sm mod" data-a="finance.deposit" data-id="${s.id}">${icon('plus', 16)} واریز</button></div></div>`; }).join('')}</div>` : UI.empty('piggy', 'برای خرید یا هدف بزرگت پس‌انداز تعریف کن و قدم‌به‌قدم پر کن.');
       body += UI.fab('finance.newSaving', 'هدف پس‌انداز جدید');
     } else if (tab === 'report') {
       body += `<div class="card">${monthNav()}</div>`;
@@ -4197,7 +4233,7 @@ const Finance = (() => {
     const by = spentByRoot(y, m);
     const rows = Object.entries(S.budgets).filter(([id]) => cat(id)).map(([id, lim]) => ({ c: cat(id), lim, sp: by[id] || 0 })).sort(U.by((r) => r.sp / r.lim, -1)).slice(0, limit);
     if (!rows.length) return '';
-    return `<div class="card stack">${rows.map((r) => { const p = U.pct(r.sp, r.lim); const col = p >= 100 ? 'var(--danger)' : p >= 80 ? 'var(--warn)' : r.c.color; return `<div><div class="row small"><b class="grow">${U.esc(r.c.name)}</b><span class="num">${U.money(r.sp, { noUnit: true })} / ${U.money(r.lim, { noUnit: true })}</span></div>${UI.prog(p, col)}${p >= 80 ? `<small class="${p >= 100 ? 'danger-t' : 'warn-t'}">${p >= 100 ? 'از بودجه گذشتید' : U.fa(p) + '٪ مصرف شده'}</small>` : ''}</div>`; }).join('')}</div>`;
+    return `<div class="card stack">${rows.map((r) => { const p = U.pct(r.sp, r.lim); const col = p >= 100 ? 'var(--danger)' : p >= 80 ? 'var(--warn)' : r.c.color; return `<div><div class="row small"><b class="grow">${U.esc(r.c.name)}</b><span class="num">${U.money(r.sp, { noUnit: true })} / ${U.money(r.lim, { noUnit: true })}</span></div>${UI.prog(p, col)}${p >= 80 ? `<small class="${p >= 100 ? 'danger-t' : 'warn-t'}">${p >= 100 ? 'از بودجه گذشتی' : U.fa(p) + '٪ مصرف شده'}</small>` : ''}</div>`; }).join('')}</div>`;
   }
   function upcomingBills(days) {
     const today = J.today(), out = [];
@@ -4321,7 +4357,7 @@ const Food = (() => {
       if (q) { const qq = q.replace(/‌/g, ' '); items = items.filter((f) => f.name.replace(/‌/g, ' ').includes(qq)); }
       else if (!fc && recentIds.length) items = recentIds.map(food).filter(Boolean).concat(items.filter((f) => !recentIds.includes(f.id)));
       items = items.slice(0, 80);
-      list.innerHTML = items.length ? `<div class="list">${items.map((f) => `<button class="li" data-f="${f.id}" style="--c:${C}"><div class="li-t"><b>${U.esc(f.name)}${recentIds.includes(f.id) && !q && !fc ? ' <span class="tag-sm">اخیر</span>' : ''}</b><small><span>${U.esc(f.serving)}</span><span>پ ${U.num(f.p)} · ک ${U.num(f.c)} · چ ${U.num(f.f)}</span></small></div><b class="li-end">${U.num(f.kcal)} <small class="muted">کالری</small></b></button>`).join('')}</div>` : UI.empty('search', 'غذایی پیدا نشد؛ «غذای جدید خودم» را بزنید.');
+      list.innerHTML = items.length ? `<div class="list">${items.map((f) => `<button class="li" data-f="${f.id}" style="--c:${C}"><div class="li-t"><b>${U.esc(f.name)}${recentIds.includes(f.id) && !q && !fc ? ' <span class="tag-sm">اخیر</span>' : ''}</b><small><span>${U.esc(f.serving)}</span><span>پ ${U.num(f.p)} · ک ${U.num(f.c)} · چ ${U.num(f.f)}</span></small></div><b class="li-end">${U.num(f.kcal)} <small class="muted">کالری</small></b></button>`).join('')}</div>` : UI.empty('search', 'غذایی پیدا نشد؛ «غذای جدید خودم» را بزن.');
     };
     draw();
     s.el.querySelector('#foodQ').addEventListener('input', (e) => { q = e.target.value.trim(); draw(); });
@@ -4344,7 +4380,7 @@ const Food = (() => {
     });
     if (!meal) scope = 'all';
     const list = s.el.querySelector('[data-list]'), ok = s.el.querySelector('[data-ok]');
-    const upd = () => { const n = chosen.size; ok.disabled = !n; ok.textContent = n ? `ثبت ${U.fa(n)} مورد` : 'غذا را تیک بزنید'; };
+    const upd = () => { const n = chosen.size; ok.disabled = !n; ok.textContent = n ? `ثبت ${U.fa(n)} مورد` : 'غذا را تیک بزن'; };
     const row = (f) => { const on = chosen.has(f.id); const qv = chosen.get(f.id) || 1; return `<div class="fp-row ${on ? 'on' : ''}" data-f="${f.id}"><button type="button" class="fp-ck" data-t aria-pressed="${on}" aria-label="انتخاب ${U.esc(f.name)}">${icon('check', 16)}</button><button type="button" class="fp-main" data-t><b>${U.esc(f.name)}</b><small>${U.esc(f.serving)} · ${U.num(f.kcal)} کالری</small></button>${on ? `<span class="fp-qty"><button type="button" data-q="-1" aria-label="کمتر">−</button><b>${U.fa(qv)}</b><button type="button" data-q="1" aria-label="بیشتر">+</button></span>` : ''}</div>`; };
     const draw = () => {
       let items = scope === 'mine' ? S.foods.slice() : allFoods().filter((f) => scope === 'all' || fitsMeal(f, meal));
@@ -4352,7 +4388,7 @@ const Food = (() => {
       else if (scope !== 'mine' && recentIds.length) { const rec = recentIds.map(food).filter(Boolean); items = rec.concat(items.filter((f) => !recentIds.includes(f.id))); }
       const sel = [...chosen.keys()].map(food).filter((f) => f && !items.includes(f));
       items = sel.concat(items).slice(0, 150);
-      list.innerHTML = items.length ? items.map(row).join('') : UI.empty('search', 'غذایی پیدا نشد. «غذای جدید خودم» را بزنید.');
+      list.innerHTML = items.length ? items.map(row).join('') : UI.empty('search', 'غذایی پیدا نشد. «غذای جدید خودم» را بزن.');
       upd();
     };
     draw();
@@ -4381,7 +4417,7 @@ const Food = (() => {
     f = f || { id: 'u:' + U.uid(), name: '', cat: 'غذای اصلی', serving: '۱ پرس', g: null, kcal: null, p: 0, c: 0, f: 0, ing: [], meals: meal || 'ld' };
     UI.formSheet({ title: isNew ? 'غذای جدید' : 'ویرایش غذا',
       fields: [{ k: 'name', label: 'نام غذا', req: true }, { k: 'cat', label: 'دسته', type: 'select', opts: FOOD_CATS.map((c) => [c, c]) }, { k: 'serving', label: 'واحد', ph: '۱ پرس / ۱ کاسه / ۱۰۰ گرم', half: true }, { k: 'kcal', label: 'کالری هر واحد', type: 'num', req: true, half: true },
-        { k: 'p', label: 'پروتئین (گرم)', type: 'num', half: true }, { k: 'c', label: 'کربوهیدرات (گرم)', type: 'num', half: true }, { k: 'f', label: 'چربی (گرم)', type: 'num', half: true }, { k: 'meals', label: 'مناسب برای', type: 'multi', opts: MEALS.map(([k, l]) => [k, l]) }, { k: 'ing', label: 'مواد لازم برای خرید', ph: 'با ویرگول جدا کنید', hint: 'برای ساخت خودکار فهرست خرید از برنامهٔ هفتگی' }],
+        { k: 'p', label: 'پروتئین (گرم)', type: 'num', half: true }, { k: 'c', label: 'کربوهیدرات (گرم)', type: 'num', half: true }, { k: 'f', label: 'چربی (گرم)', type: 'num', half: true }, { k: 'meals', label: 'مناسب برای', type: 'multi', opts: MEALS.map(([k, l]) => [k, l]) }, { k: 'ing', label: 'مواد لازم برای خرید', ph: 'با ویرگول جدا کن', hint: 'برای ساخت خودکار فهرست خرید از برنامهٔ هفتگی' }],
       vals: Object.assign({}, f, { ing: (f.ing || []).join('، '), meals: (f.meals || 'blds').split('') }),
       onSave: (v) => { Object.assign(f, v, { p: v.p || 0, c: v.c || 0, f: v.f || 0, meals: (v.meals || []).join('') || 'blds', ing: (v.ing || '').split(/[،,]/).map((x) => x.trim()).filter(Boolean) }); if (isNew) S.foods.push(f); DB.save('foods'); App.refresh(); if (then) setTimeout(() => then(f), 250); },
       onDelete: isNew ? null : () => { S.foods = S.foods.filter((x) => x.id !== f.id); DB.save('foods'); App.refresh(); } });
@@ -4410,7 +4446,7 @@ const Food = (() => {
   function shopToggle(it) {
     if (it.done) { it.done = false; if (it.txId) { S.txs = S.txs.filter((t) => t.id !== it.txId); it.txId = null; DB.save('txs'); } DB.save('shop'); App.refresh(); return; }
     if (!App.on('finance')) { it.done = true; DB.save('shop'); App.refresh(); return; }
-    UI.formSheet({ title: 'خریدم: ' + it.name, intro: '<p class="small muted">اگر مبلغ را بنویسید، خودکار در هزینه‌های بخش مالی ثبت می‌شود.</p>',
+    UI.formSheet({ title: 'خریدم: ' + it.name, intro: '<p class="small muted">اگر مبلغ را بنویسی، خودکار در هزینه‌های بخش مالی ثبت می‌شود.</p>',
       fields: [{ k: 'price', label: 'مبلغ (اختیاری)', type: 'money' }], vals: {}, save: 'تیک بزن',
       onSave: (v) => {
         it.done = true; it.doneAt = Date.now();
@@ -4469,7 +4505,7 @@ const Food = (() => {
   function targetsSheet() {
     const p = S.settings.profile, t = targets();
     UI.formSheet({ title: 'هدف کالری و مشخصات', intro: `<p class="small muted">هدف فعلی: ${U.num(t.kcal)} کالری (سوخت‌وساز پایه ${U.num(t.bmr)}). فرمول میفلین-سنت‌جئور؛ عددی تقریبی است.</p>`,
-      fields: [{ k: 'sex', label: 'جنسیت', type: 'chips', opts: [['m', 'مرد'], ['f', 'زن']], half: true }, { k: 'birthYear', label: 'سال تولد (شمسی)', type: 'num', half: true }, { k: 'height', label: 'قد', type: 'num', unit: 'سانتی‌متر', half: true }, { k: 'weight', label: 'وزن', type: 'num', unit: 'کیلوگرم', half: true, hint: 'اگر در بخش ورزش وزن ثبت کنید، آخرین وزن استفاده می‌شود.' },
+      fields: [{ k: 'sex', label: 'جنسیت', type: 'chips', opts: [['m', 'مرد'], ['f', 'زن']], half: true }, { k: 'birthYear', label: 'سال تولد (شمسی)', type: 'num', half: true }, { k: 'height', label: 'قد', type: 'num', unit: 'سانتی‌متر', half: true }, { k: 'weight', label: 'وزن', type: 'num', unit: 'کیلوگرم', half: true, hint: 'اگر در بخش ورزش وزن ثبت کنی، آخرین وزن استفاده می‌شود.' },
         { k: 'activity', label: 'میزان فعالیت', type: 'select', opts: [['1.2', 'کم‌تحرک (پشت میز)'], ['1.375', 'فعالیت سبک (۱ تا ۳ روز ورزش)'], ['1.55', 'متوسط (۳ تا ۵ روز)'], ['1.725', 'زیاد (۶ تا ۷ روز)'], ['1.9', 'خیلی زیاد (ورزشکار حرفه‌ای)']] },
         { k: 'goal', label: 'هدف', type: 'chips', opts: [['lose', 'کاهش وزن'], ['keep', 'حفظ وزن'], ['gain', 'افزایش وزن/عضله']] }, { k: 'water', label: 'هدف آب روزانه', type: 'num', unit: 'لیوان' },
         { k: 'manual', label: 'هدف کالری را دستی تعیین می‌کنم', type: 'toggle' }, { k: 'kcal', label: 'کالری روزانه', type: 'num', half: true }, { k: 'mp', label: 'پروتئین (گرم)', type: 'num', half: true }],
@@ -4666,7 +4702,7 @@ const Workout = (() => {
   function finish() {
     const s = active(); if (!s) return;
     const done = s.ex.map((e) => ({ exId: e.exId, sets: e.sets.filter((x) => x.done) })).filter((e) => e.sets.length);
-    if (!done.length) { App.toast('هیچ ستی تیک نخورده؛ ست‌های انجام‌شده را تیک بزنید یا جلسه را لغو کنید.'); return; }
+    if (!done.length) { App.toast('هیچ ستی تیک نخورده؛ ست‌های انجام‌شده را تیک بزن یا جلسه را لغو کن.'); return; }
     const w = { id: s.id, routineId: s.routineId, name: s.name, date: s.date, start: s.start, end: Date.now(), ex: done };
     const prs = [];
     done.forEach((e) => { const t = ex(e.exId).type; const old = best(e.exId, w.id).m; const nb = Math.max(...e.sets.map((x) => metric(t, x))); if (nb > old && old > 0) prs.push(ex(e.exId).name); });
@@ -4679,7 +4715,7 @@ const Workout = (() => {
     const bar = document.getElementById('restBar'); if (bar) bar.remove(); clearInterval(timerIv);
     App.back();
     const mins = Math.round((w.end - w.start) / 60000);
-    UI.sheet({ title: 'تمرین ثبت شد', body: `<div class="stack" style="text-align:center;align-items:center">${icon('trophy', 44)}<div class="grid3" style="width:100%"><div class="stat"><small>مدت</small><b>${U.fa(mins)} دقیقه</b></div><div class="stat"><small>ست</small><b>${U.fa(U.sum(done, (e) => e.sets.length))}</b></div><div class="stat"><small>حجم</small><b>${U.num(volume(w))} کیلو</b></div></div>${prs.length ? `<div class="notice" style="width:100%">${icon('star', 18)}<div><b>رکورد جدید!</b><br>${prs.map(U.esc).join('، ')}</div></div>` : '<p class="muted small">آفرین؛ ادامه بدهید.</p>'}</div>` });
+    UI.sheet({ title: 'تمرین ثبت شد', body: `<div class="stack" style="text-align:center;align-items:center">${icon('trophy', 44)}<div class="grid3" style="width:100%"><div class="stat"><small>مدت</small><b>${U.fa(mins)} دقیقه</b></div><div class="stat"><small>ست</small><b>${U.fa(U.sum(done, (e) => e.sets.length))}</b></div><div class="stat"><small>حجم</small><b>${U.num(volume(w))} کیلو</b></div></div>${prs.length ? `<div class="notice" style="width:100%">${icon('star', 18)}<div><b>رکورد جدید!</b><br>${prs.map(U.esc).join('، ')}</div></div>` : '<p class="muted small">آفرین؛ ادامه بده.</p>'}</div>` });
   }
   /* ---------- body ---------- */
   function editBody(b) {
@@ -4701,7 +4737,7 @@ const Workout = (() => {
   function screen() {
     const today = J.today();
     let body = UI.seg('workout.tab', tab, [['today', 'برنامه‌ها'], ['history', 'تاریخچه'], ['ex', 'حرکات'], ['body', 'بدن و پیشرفت']]);
-    if (active()) body += `<button class="notice" data-a="nav.go" data-s="workout/session" style="border:0;text-align:right;width:100%">${icon('play', 18)}<div><b>جلسهٔ «${U.esc(active().name)}» در جریان است</b><br><span class="small">برای ادامه بزنید</span></div></button>`;
+    if (active()) body += `<button class="notice" data-a="nav.go" data-s="workout/session" style="border:0;text-align:right;width:100%">${icon('play', 18)}<div><b>جلسهٔ «${U.esc(active().name)}» در جریان است</b><br><span class="small">برای ادامه بزن</span></div></button>`;
     if (tab === 'today') {
       const tr = todayRoutines(today);
       const doneToday = S.workouts.filter((w) => w.date === today);
@@ -4709,7 +4745,7 @@ const Workout = (() => {
         <button class="btn sm ghost" data-a="workout.start">${icon('play', 16)} تمرین آزاد</button></div>`;
       if (doneToday.length) body += UI.sec('تمرین‌های امروز', `<div class="list">${doneToday.map(wRow).join('')}</div>`);
       const wk = J.weekStart(today); const thisWeek = S.workouts.filter((w) => w.date >= wk).length;
-      body += UI.sec('برنامه‌های هفتگی', S.routines.length ? `<div class="list">${S.routines.map((r) => `<button class="li" data-a="workout.editRoutine" data-id="${r.id}" style="--c:${r.color}"><span class="li-ic">${icon('list')}</span><div class="li-t"><b>${U.esc(r.name)}</b><small><span>${(r.days || []).length ? r.days.map((d) => J.WEEKDAYS[d]).join('، ') : 'بدون روز'}</span><span>${U.fa(r.ex.length)} حرکت</span></small></div></button>`).join('')}</div>` : UI.empty('list', 'برنامهٔ تمرینی ندارید.', `<button class="btn ghost" data-a="workout.starter">برنامهٔ آمادهٔ ۳ روزه</button>`), `<button class="link" data-a="workout.newRoutine">${icon('plus', 16)} برنامه</button>`);
+      body += UI.sec('برنامه‌های هفتگی', S.routines.length ? `<div class="list">${S.routines.map((r) => `<button class="li" data-a="workout.editRoutine" data-id="${r.id}" style="--c:${r.color}"><span class="li-ic">${icon('list')}</span><div class="li-t"><b>${U.esc(r.name)}</b><small><span>${(r.days || []).length ? r.days.map((d) => J.WEEKDAYS[d]).join('، ') : 'بدون روز'}</span><span>${U.fa(r.ex.length)} حرکت</span></small></div></button>`).join('')}</div>` : UI.empty('list', 'برنامهٔ تمرینی نداری.', `<button class="btn ghost" data-a="workout.starter">برنامهٔ آمادهٔ ۳ روزه</button>`), `<button class="link" data-a="workout.newRoutine">${icon('plus', 16)} برنامه</button>`);
       body += `<p class="small muted">این هفته: ${U.fa(thisWeek)} جلسه</p>`;
     } else if (tab === 'history') {
       const ws = S.workouts.slice().sort(U.by((w) => w.start, -1));
@@ -4745,7 +4781,7 @@ const Workout = (() => {
     const pts = hist.map((w) => ({ x: J.fmt(w.date, 'short'), y: Math.max(...w.ex.find((x) => x.exId === e.id).sets.map((s) => metric(e.type, s))) }));
     const b = best(e.id);
     let body = `<div class="card stack"><div class="row"><div class="grow"><small class="muted">${e.muscle} · ${e.eq}</small><div class="big">${b.s ? setText(e.type, b.s) : '—'}</div><small class="muted">بهترین ست</small></div>${e.type === 'w' && b.m ? `<div class="stat"><small>۱RM تخمینی</small><b>${U.num(b.m, 1)}</b></div>` : ''}</div>${pts.length > 1 ? `<small class="muted">${metricLabel(e.type)}</small>${Charts.line(pts, { color: C })}` : ''}</div>`;
-    body += UI.sec('سابقه', hist.length ? `<div class="list">${hist.slice().reverse().map((w) => `<div class="li"><div class="li-t"><b>${J.fmt(w.date)}</b><small>${w.ex.find((x) => x.exId === e.id).sets.map((s) => `<span class="tag-sm">${setText(e.type, s)}</span>`).join('')}</small></div></div>`).join('')}</div>` : '<p class="muted small">هنوز با این حرکت تمرین نکرده‌اید.</p>');
+    body += UI.sec('سابقه', hist.length ? `<div class="list">${hist.slice().reverse().map((w) => `<div class="li"><div class="li-t"><b>${J.fmt(w.date)}</b><small>${w.ex.find((x) => x.exId === e.id).sets.map((s) => `<span class="tag-sm">${setText(e.type, s)}</span>`).join('')}</small></div></div>`).join('')}</div>` : '<p class="muted small">هنوز با این حرکت تمرین نکرده‌ای.</p>');
     return { title: e.name, color: C, body, head: e.id.startsWith('ux:') ? `<button class="icon-btn" data-a="workout.editEx" data-id="${e.id}" aria-label="ویرایش">${icon('edit')}</button>` : '' };
   }
   App.mod('workout', {
@@ -4801,13 +4837,13 @@ const Mood = (() => {
     const isNew = !m;
     const d = preset.date || J.today();
     m = m || Object.assign({ id: U.uid(), date: d, time: J.nowHM(), mood: null, emotions: [], acts: autoActs(d), sleep: null, sleepQ: null, grat: ['', '', ''], note: '' }, preset);
-    const faces = `<div class="mood-pick" data-faces>${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="${m.mood === v ? 'on' : ''}" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 46)}</button>`).join('')}</div><input type="hidden" name="mood" value="${m.mood || ''}"><p class="small muted" data-flabel style="text-align:center">${m.mood ? MOOD_LABELS[m.mood] : 'حالتان چطور است؟'}</p>`;
+    const faces = `<div class="mood-pick" data-faces>${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="${m.mood === v ? 'on' : ''}" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 46)}</button>`).join('')}</div><input type="hidden" name="mood" value="${m.mood || ''}"><p class="small muted" data-flabel style="text-align:center">${m.mood ? MOOD_LABELS[m.mood] : 'حالت چطور است؟'}</p>`;
     const pq = (m.prompt && m.prompt.q) || Journal.question(m.date || d);
     const promptHtml = `<div class="journal-q"><p>${icon('sparkle', 15)} <b>${U.esc(pq)}</b></p><textarea name="pa" rows="2" placeholder="چند خط بنویس…" aria-label="${U.esc(pq)}">${U.esc((m.prompt && m.prompt.a) || '')}</textarea><button type="button" class="link small" data-newq>پرسش دیگر</button><input type="hidden" name="pq" value="${U.esc(pq)}"></div>`;
     const grat = `<div class="stack" style="gap:6px">${[0, 1, 2].map((i) => `<input name="g${i}" value="${U.esc((m.grat || [])[i] || '')}" placeholder="${['یک چیز خوب امروز…', 'کسی که از او ممنونم…', 'لحظه‌ای که لذت بردم…'][i]}">`).join('')}</div>`;
     UI.formSheet({
       title: isNew ? 'شرح حال امروز' : 'ویرایش شرح حال',
-      fields: [{ k: 'faces', type: 'html', html: faces }, { k: 'note', label: 'شرح حال امروز', type: 'textarea', rows: 5, ph: 'امروز چه گذشت؟ هر چه در ذهنت است بنویس…' }, { k: 'emotions', label: 'احساس‌ها', type: 'multi', opts: S.settings.emotions.map((e) => [e, e]) }, { k: 'acts', label: 'امروز چه کردید؟', type: 'multi', opts: S.settings.moodActs.map((e) => [e, e]) },
+      fields: [{ k: 'faces', type: 'html', html: faces }, { k: 'note', label: 'شرح حال امروز', type: 'textarea', rows: 5, ph: 'امروز چه گذشت؟ هر چه در ذهنت است بنویس…' }, { k: 'emotions', label: 'احساس‌ها', type: 'multi', opts: S.settings.emotions.map((e) => [e, e]) }, { k: 'acts', label: 'امروز چه کردی؟', type: 'multi', opts: S.settings.moodActs.map((e) => [e, e]) },
         { k: 'sleep', label: 'خواب دیشب', type: 'num', unit: 'ساعت', half: true }, { k: 'sleepQ', label: 'کیفیت خواب', type: 'range', max: 5, half: true }, { k: 'gr', label: 'سه چیز که بابتش قدردانم', type: 'html', html: grat }, { k: 'pr', label: 'پرسش امروز دفترچه', type: 'html', html: promptHtml }, { k: 'time', label: 'ساعت', type: 'time', half: true }, { k: 'date', label: 'تاریخ', type: 'date', half: true }],
       vals: m,
       after: (frm) => {
@@ -4817,7 +4853,7 @@ const Mood = (() => {
       },
       onSave: (v, frm) => {
         const mood = +frm.querySelector('[name=mood]').value;
-        if (!mood) { App.toast('یکی از چهره‌ها را انتخاب کنید'); return false; }
+        if (!mood) { App.toast('یکی از چهره‌ها را انتخاب کن'); return false; }
         Object.assign(m, { mood, emotions: v.emotions, acts: v.acts, sleep: v.sleep, sleepQ: v.sleepQ, note: v.note, time: v.time, date: v.date || d, grat: [0, 1, 2].map((i) => frm.querySelector(`[name=g${i}]`).value.trim()), prompt: frm.querySelector('[name=pa]').value.trim() ? { q: frm.querySelector('[name=pq]').value, a: frm.querySelector('[name=pa]').value.trim() } : null });
         if (isNew) S.moods.push(m);
         DB.save('moods'); App.refresh(); App.toast('ثبت شد');
@@ -4837,13 +4873,13 @@ const Mood = (() => {
     const today = J.today();
     const days = []; for (let i = 0; i < 90; i++) days.push(J.addDays(today, -i));
     const out = [];
-    const say = (label, r, good, bad) => { if (!r || Math.abs(r.diff) < 5) return; out.push({ text: r.diff > 0 ? `${good}، حال شما به‌طور میانگین ${U.fa(r.diff)}٪ بهتر بوده` : `${bad}، حال شما ${U.fa(-r.diff)}٪ پایین‌تر بوده`, diff: r.diff, label }); };
-    if (App.on('workout')) say('ورزش', compare(days, (d) => S.workouts.some((w) => w.date === d) || Object.keys(S.done).some((k) => k.startsWith('w:') && k.endsWith(':' + d))), 'در روزهایی که ورزش کرده‌اید', 'در روزهای ورزش');
-    say('خواب', compare(days, (d) => { const m = S.moods.find((x) => x.date === d && x.sleep); return m && m.sleep >= 7; }), 'وقتی ۷ ساعت یا بیشتر خوابیده‌اید', 'وقتی ۷ ساعت یا بیشتر خوابیده‌اید');
-    if (App.on('goals') && S.habits.length) say('عادت‌ها', compare(days.filter((d) => d < today), (d) => { const hs = S.habits.filter((h) => Goals.scheduled(h, d)); if (!hs.length) return false; return U.pct(hs.filter((h) => App.doneVal(Goals.hkey(h, d)) === 'full' || App.doneVal(Goals.hkey(h, d)) === 'mini').length, hs.length) >= 70; }), 'در روزهایی که بیشتر عادت‌هایتان را انجام داده‌اید', 'در روزهایی که بیشتر عادت‌ها انجام شده');
+    const say = (label, r, good, bad) => { if (!r || Math.abs(r.diff) < 5) return; out.push({ text: r.diff > 0 ? `${good}، حالت به‌طور میانگین ${U.fa(r.diff)}٪ بهتر بوده` : `${bad}، حالت ${U.fa(-r.diff)}٪ پایین‌تر بوده`, diff: r.diff, label }); };
+    if (App.on('workout')) say('ورزش', compare(days, (d) => S.workouts.some((w) => w.date === d) || Object.keys(S.done).some((k) => k.startsWith('w:') && k.endsWith(':' + d))), 'در روزهایی که ورزش کرده‌ای', 'در روزهای ورزش');
+    say('خواب', compare(days, (d) => { const m = S.moods.find((x) => x.date === d && x.sleep); return m && m.sleep >= 7; }), 'وقتی ۷ ساعت یا بیشتر خوابیده‌ای', 'وقتی ۷ ساعت یا بیشتر خوابیده‌ای');
+    if (App.on('goals') && S.habits.length) say('عادت‌ها', compare(days.filter((d) => d < today), (d) => { const hs = S.habits.filter((h) => Goals.scheduled(h, d)); if (!hs.length) return false; return U.pct(hs.filter((h) => App.doneVal(Goals.hkey(h, d)) === 'full' || App.doneVal(Goals.hkey(h, d)) === 'mini').length, hs.length) >= 70; }), 'در روزهایی که بیشتر عادت‌هایت را انجام داده‌ای', 'در روزهایی که بیشتر عادت‌ها انجام شده');
     if (App.on('finance')) { const avg = U.sum(S.txs.filter((t) => t.type === 'exp' && t.date >= days[days.length - 1]), (t) => t.amount) / 90; if (avg > 0) say('خرج', compare(days, (d) => U.sum(S.txs.filter((t) => t.type === 'exp' && t.date === d), (t) => t.amount) > avg * 1.5), 'در روزهای پرخرج', 'در روزهای پرخرج'); }
-    if (App.on('food')) say('تغذیه', compare(days, (d) => { const t = Food.dayTotals(d); return t.kcal > 0 && t.kcal <= Food.targets().kcal * 1.05; }), 'در روزهایی که در محدودهٔ کالری مانده‌اید', 'در روزهایی که در محدودهٔ کالری مانده‌اید');
-    S.settings.moodActs.forEach((a) => { if (a === 'ورزش' && App.on('workout')) return; say(a, compare(days, (d) => S.moods.some((m) => m.date === d && (m.acts || []).includes(a))), `در روزهایی که «${a}» داشته‌اید`, `در روزهایی که «${a}» داشته‌اید`); });
+    if (App.on('food')) say('تغذیه', compare(days, (d) => { const t = Food.dayTotals(d); return t.kcal > 0 && t.kcal <= Food.targets().kcal * 1.05; }), 'در روزهایی که در محدودهٔ کالری مانده‌ای', 'در روزهایی که در محدودهٔ کالری مانده‌ای');
+    S.settings.moodActs.forEach((a) => { if (a === 'ورزش' && App.on('workout')) return; say(a, compare(days, (d) => S.moods.some((m) => m.date === d && (m.acts || []).includes(a))), `در روزهایی که «${a}» داشته‌ای`, `در روزهایی که «${a}» داشته‌ای`); });
     return out.sort(U.by((x) => Math.abs(x.diff), -1));
   }
   function pixels(jy) {
@@ -4867,7 +4903,7 @@ const Mood = (() => {
     let body = UI.seg('mood.tab', tab, [['today', 'امروز'], ['history', 'سابقه'], ['insights', 'چه حالم را بهتر می‌کند']]);
     if (tab === 'today') {
       const ms = S.moods.filter((m) => m.date === today);
-      body += `<div class="card stack" style="text-align:center"><b>${ms.length ? 'یک ثبت دیگر؟' : 'امروز حالتان چطور است؟'}</b><div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 50)}</button>`).join('')}</div><small class="muted">روی یک چهره بزنید تا صفحهٔ شرح حال باز شود.</small></div>`;
+      body += `<div class="card stack" style="text-align:center"><b>${ms.length ? 'یک ثبت دیگر؟' : 'امروز حالت چطور است؟'}</b><div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 50)}</button>`).join('')}</div><small class="muted">روی یک چهره بزن تا صفحهٔ شرح حال باز شود.</small></div>`;
       if (ms.length) body += UI.sec('ثبت‌های امروز', `<div class="list">${ms.map(entryRow).join('')}</div>`);
       body += UI.sec('پرسش امروز دفترچه', `<div class="card journal-card"><p>${icon('sparkle', 16)} <b>${U.esc(Journal.question(today))}</b></p><p class="small muted">یک پرسش تازه برای هر روز؛ جوابش را در صفحهٔ شرح حال بنویس.</p><button class="btn sm ghost" data-a="mood.new" data-d="${today}">${icon('edit', 16)} نوشتن</button></div>`);
       const grat = S.moods.filter((m) => (m.grat || []).some(Boolean)).sort(U.by((m) => m.date, -1))[0];
@@ -4880,11 +4916,11 @@ const Mood = (() => {
       const pts = []; for (let i = 29; i >= 0; i--) { const d = J.addDays(today, -i); const a = dayAvg(d); if (a) pts.push({ x: J.fmt(d, 'short'), y: a }); }
       if (pts.length > 1) body += UI.sec('۳۰ روز اخیر', `<div class="card">${Charts.line(pts, { color: C, fmt: (v) => U.num(v, 1) })}</div>`);
       const all = S.moods.slice().sort(U.by((m) => m.date + m.time, -1)).slice(0, 40);
-      body += UI.sec('ثبت‌ها', all.length ? `<div class="list">${all.map(entryRow).join('')}</div>` : UI.empty('mood', 'هنوز ثبتی ندارید.'));
+      body += UI.sec('ثبت‌ها', all.length ? `<div class="list">${all.map(entryRow).join('')}</div>` : UI.empty('mood', 'هنوز ثبتی نداری.'));
     } else {
       const ins = insights();
       body += `<div class="notice info">${icon('info', 18)}<div class="small">خودنگار ثبت‌های ۹۰ روز اخیرت را کنار هم می‌گذارد و پیدا می‌کند در چه روزهایی حالت بهتر یا بدتر بوده؛ مثلاً روزهایی که ورزش کرده‌ای یا خوب خوابیده‌ای.</div></div>`;
-      body += ins.length ? `<div class="list">${ins.map((x) => `<div class="li" style="--c:${x.diff > 0 ? 'var(--ok)' : 'var(--danger)'}"><span class="li-ic">${icon(x.diff > 0 ? 'arrowUp' : 'arrowDown')}</span><div class="li-t"><b>${U.esc(x.text)}</b><small>${U.esc(x.label)}</small></div></div>`).join('')}</div><p class="small muted">این جمله‌ها از داده‌های ۹۰ روز اخیر و فقط وقتی ساخته می‌شوند که برای هر دو حالت دست‌کم ۳ روز ثبت وجود داشته باشد. همبستگی به معنای علت نیست.</p>` : UI.empty('sparkle', 'هنوز دادهٔ کافی نیست؛ چند هفته حالت را ثبت کن. خودنگار حال شما را با ورزش، خواب، عادت‌ها، خرج و تغذیه مقایسه می‌کند.');
+      body += ins.length ? `<div class="list">${ins.map((x) => `<div class="li" style="--c:${x.diff > 0 ? 'var(--ok)' : 'var(--danger)'}"><span class="li-ic">${icon(x.diff > 0 ? 'arrowUp' : 'arrowDown')}</span><div class="li-t"><b>${U.esc(x.text)}</b><small>${U.esc(x.label)}</small></div></div>`).join('')}</div><p class="small muted">این جمله‌ها از داده‌های ۹۰ روز اخیر و فقط وقتی ساخته می‌شوند که برای هر دو حالت دست‌کم ۳ روز ثبت وجود داشته باشد. همبستگی به معنای علت نیست.</p>` : UI.empty('sparkle', 'هنوز دادهٔ کافی نیست؛ چند هفته حالت را ثبت کن. خودنگار حالت را با ورزش، خواب، عادت‌ها، خرج و تغذیه مقایسه می‌کند.');
       const cnt = {}; S.moods.forEach((m) => (m.emotions || []).forEach((e) => { cnt[e] = (cnt[e] || 0) + 1; }));
       const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 6);
       if (top.length) body += UI.sec('احساس‌های پرتکرار', `<div class="card">${Charts.hbars(top.map(([l, v]) => ({ label: l, value: v, color: C })), { fmt: (v) => U.fa(v) + ' بار' })}</div>`);
@@ -4898,7 +4934,7 @@ const Mood = (() => {
     toggle: (d) => { const m = S.moods.filter((x) => x.date === d); if (m.length) { App.go('mood'); return; } edit(null, { date: d }); },
     card() {
       const d = J.today(); const ms = S.moods.filter((m) => m.date === d); const last = ms[ms.length - 1];
-      return `<div class="mcard" style="--c:${C}"><button class="mcard-h" data-a="nav.go" data-s="mood" style="border:0;background:none;padding:0">${icon('mood', 16)}<span class="grow" style="text-align:right">حال امروز</span></button>${last ? `<div class="row">${moodFace(last.mood, 40)}<div class="small"><b>${MOOD_LABELS[last.mood]}</b><br><span class="muted">${(last.emotions || []).slice(0, 2).join('، ')}</span></div></div>` : `<div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 26)}</button>`).join('')}</div><p class="small muted">با یک لمس ثبت کنید</p>`}</div>`;
+      return `<div class="mcard" style="--c:${C}"><button class="mcard-h" data-a="nav.go" data-s="mood" style="border:0;background:none;padding:0">${icon('mood', 16)}<span class="grow" style="text-align:right">حال امروز</span></button>${last ? `<div class="row">${moodFace(last.mood, 40)}<div class="small"><b>${MOOD_LABELS[last.mood]}</b><br><span class="muted">${(last.emotions || []).slice(0, 2).join('، ')}</span></div></div>` : `<div class="mood-pick">${[1, 2, 3, 4, 5].map((v) => `<button data-a="mood.quick" data-v="${v}" aria-label="${MOOD_LABELS[v]}">${moodFace(v, 26)}</button>`).join('')}</div><p class="small muted">با یک لمس ثبت کن</p>`}</div>`;
     },
     acts: {
       tab: (d) => { tab = d.v; App.refresh(); },
@@ -4965,9 +5001,9 @@ const Review = (() => {
     const draw = () => {
       let h = `<div class="steps-dots">${steps.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div><h3>${U.fa(step + 1)}. ${steps[step]}</h3>`;
       if (step === 0) h += `<p class="small muted">هفتهٔ ${J.fmt(a, 'short')} تا ${J.fmt(b, 'short')} چطور گذشت؟</p>` + statsHtml(st);
-      if (step === 1) h += goals.length ? goals.map((g) => `<div class="card stack" style="--mod:${g.color}"><div class="row"><b class="grow">${U.esc(g.title)}</b><span class="num">${U.fa(Goals.progress(g))}٪</span></div>${UI.prog(Goals.progress(g), g.color)}${g.metric ? `<label class="inp-unit"><span>مقدار فعلی</span><input data-gm="${g.id}" inputmode="decimal" value="${U.fa(g.metric.current)}"><span>${U.esc(g.metric.unit)}</span></label>` : ''}</div>`).join('') : '<p class="muted">هدف فعالی ندارید.</p>';
-      if (step === 2) h += left.length ? `<p class="small muted">برای هر کار انجام‌نشده تصمیم بگیرید:</p>` + left.map((t) => `<div class="card flat stack"><b>${U.esc(t.title)}</b><span class="small muted">${J.rel(t.date)}</span><div class="chips">${[['next', 'هفتهٔ بعد'], ['nodate', 'بدون تاریخ'], ['done', 'انجام شد'], ['del', 'حذف']].map(([v, l]) => `<button class="chip ${choice[t.id] === v ? 'on' : ''}" data-tc="${t.id}" data-v="${v}">${l}</button>`).join('')}</div></div>`).join('') : '<p class="muted">کار مانده‌ای ندارید. عالی!</p>';
-      if (step === 3) h += '<p class="small muted">سه کار مهم هفتهٔ بعد را بنویسید؛ با اولویت بالا در روز انتخابی ثبت می‌شوند.</p>' + [0, 1, 2].map((i) => `<div class="row"><input data-top="${i}" value="${U.esc(data.top[i])}" placeholder="کار مهم ${U.fa(i + 1)}"><select data-topd="${i}" style="width:120px">${J.WEEKDAYS.map((w, k) => `<option value="${k}" ${String(k) === data.topDay[i] ? 'selected' : ''}>${w}</option>`).join('')}</select></div>`).join('');
+      if (step === 1) h += goals.length ? goals.map((g) => `<div class="card stack" style="--mod:${g.color}"><div class="row"><b class="grow">${U.esc(g.title)}</b><span class="num">${U.fa(Goals.progress(g))}٪</span></div>${UI.prog(Goals.progress(g), g.color)}${g.metric ? `<label class="inp-unit"><span>مقدار فعلی</span><input data-gm="${g.id}" inputmode="decimal" value="${U.fa(g.metric.current)}"><span>${U.esc(g.metric.unit)}</span></label>` : ''}</div>`).join('') : '<p class="muted">هدف فعالی نداری.</p>';
+      if (step === 2) h += left.length ? `<p class="small muted">برای هر کار انجام‌نشده تصمیم بگیر:</p>` + left.map((t) => `<div class="card flat stack"><b>${U.esc(t.title)}</b><span class="small muted">${J.rel(t.date)}</span><div class="chips">${[['next', 'هفتهٔ بعد'], ['nodate', 'بدون تاریخ'], ['done', 'انجام شد'], ['del', 'حذف']].map(([v, l]) => `<button class="chip ${choice[t.id] === v ? 'on' : ''}" data-tc="${t.id}" data-v="${v}">${l}</button>`).join('')}</div></div>`).join('') : '<p class="muted">کار مانده‌ای نداری. عالی!</p>';
+      if (step === 3) h += '<p class="small muted">سه کار مهم هفتهٔ بعد را بنویس؛ با اولویت بالا در روز انتخابی ثبت می‌شوند.</p>' + [0, 1, 2].map((i) => `<div class="row"><input data-top="${i}" value="${U.esc(data.top[i])}" placeholder="کار مهم ${U.fa(i + 1)}"><select data-topd="${i}" style="width:120px">${J.WEEKDAYS.map((w, k) => `<option value="${k}" ${String(k) === data.topDay[i] ? 'selected' : ''}>${w}</option>`).join('')}</select></div>`).join('');
       if (step === 4) h += `<div class="fld"><label for="rvGood">چه چیزی خوب پیش رفت؟</label><textarea id="rvGood" rows="3">${U.esc(data.good)}</textarea></div><div class="fld"><label for="rvChange">هفتهٔ بعد چه چیزی را تغییر می‌دهم؟</label><textarea id="rvChange" rows="3">${U.esc(data.change)}</textarea></div>`;
       box.innerHTML = h;
       s.el.querySelector('[data-prev]').disabled = step === 0;
@@ -4992,7 +5028,7 @@ const Review = (() => {
       S.reviews.push({ week: a, date: J.today(), good: data.good, change: data.change, top: data.top.filter(Boolean), stats: { dn: st.dn, tot: st.tot, habits: st.habits, workouts: st.workouts, mood: st.mood, spent: st.spent } });
       App.setDone(doneKey(a), 1);
       DB.save('tasks', 'reviews');
-      s.close(); App.refresh(); App.toast('مرور هفته ثبت شد. هفتهٔ خوبی داشته باشید!');
+      s.close(); App.refresh(); App.toast('مرور هفته ثبت شد. هفتهٔ خوبی داشته باشی!');
     };
     draw();
   }
@@ -5058,7 +5094,7 @@ const Home = (() => {
     const tl = S.settings.homeView === 'timeline';
     todayHtml += `<div class="view-switch" role="group" aria-label="نوع نمایش"><button class="${tl ? '' : 'on'}" data-a="home.view" data-v="list" aria-pressed="${!tl}">${icon('list', 16)} فهرست</button><button class="${tl ? 'on' : ''}" data-a="home.view" data-v="timeline" aria-pressed="${tl}">${icon('clock', 16)} خط زمانی</button></div>`;
     if (tl) todayHtml += Timeline.html(today, list, workOn ? scope : null) + otherNote;
-    else if (!list.length) todayHtml += `<div class="card">${UI.empty('checkSquare', isW ? 'برنامهٔ کاری برای امروز ندارید.' : 'صفحهٔ امروزت هنوز باز است. اولین کار را به دلخواهت اضافه کن.', `<button class="btn primary" data-a="tasks.new" data-scope="${scope}">${icon('plus', 18)} ${isW ? 'برنامهٔ کاری جدید' : 'کار جدید'}</button>${otherNote}`)}</div>`;
+    else if (!list.length) todayHtml += `<div class="card">${UI.empty('checkSquare', isW ? 'برنامهٔ کاری برای امروز نداری.' : 'صفحهٔ امروزت هنوز باز است. اولین کار را به دلخواهت اضافه کن.', `<button class="btn primary" data-a="tasks.new" data-scope="${scope}">${icon('plus', 18)} ${isW ? 'برنامهٔ کاری جدید' : 'کار جدید'}</button>${otherNote}`)}</div>`;
     else {
       todayHtml += open.length ? `<div class="list">${open.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : `<div class="card row">${icon('trophy', 26)}<div class="grow"><b>${workOn ? (isW ? 'همهٔ برنامه‌های کاری امروز انجام شد!' : 'همهٔ کارهای شخصی امروز انجام شد!') : 'همهٔ کارهای امروز انجام شد!'}</b><p class="small muted">${otherOpen ? '' : 'روز پرباری بود.'}</p>${otherNote}</div></div>`;
       if (done.length) todayHtml += `<button class="link" data-a="home.showDone">${showDone ? 'پنهان کردن' : 'نمایش'} ${U.fa(done.length)} مورد انجام‌شده</button>${showDone ? `<div class="list">${done.map((i) => Agenda.itemHtml(i, today)).join('')}</div>` : ''}`;
@@ -5076,13 +5112,13 @@ const Home = (() => {
     }
     if (cards.length) body += UI.sec('زندگی در یک نگاه', `<div class="cards">${cards.join('')}</div>`, '<button class="link" data-a="nav.go" data-s="settings/modules">چیدمان</button>');
     body += '</div></div>';
-    return { title: 'خودنگار', sub: 'دفتر روزانهٔ شما', color: 'var(--accent)', body,
+    return { title: 'خودنگار', sub: 'دفتر روزانهٔ تو', color: 'var(--accent)', body,
       head: `<button class="icon-btn" data-a="nav.go" data-s="assistant" aria-label="دستیار هوشمند">${icon('sparkle')}</button><button class="icon-btn" data-a="nav.go" data-s="review" aria-label="مرور هفته">${icon('chart')}</button>${S.settings.lock && S.settings.lock.enabled ? `<button class="icon-btn" data-a="lock.now" aria-label="قفل">${icon('lock')}</button>` : ''}` };
   }
   function modulesScreen() {
     const tiles = MODULE_ORDER.map((id) => App.mods[id]).filter(Boolean).map((m) => {
       const on = App.on(m.id);
-      return `<button class="mod-tile ${on ? '' : 'off'}" ${on ? `data-a="nav.go" data-s="${m.id}"` : 'data-a="nav.go" data-s="settings/modules"'} style="--c:${m.c}"><span class="li-ic">${icon(m.icon, 22)}</span><b>${m.title}</b><small>${on ? m.desc : 'خاموش است؛ برای فعال کردن بزنید'}</small></button>`;
+      return `<button class="mod-tile ${on ? '' : 'off'}" ${on ? `data-a="nav.go" data-s="${m.id}"` : 'data-a="nav.go" data-s="settings/modules"'} style="--c:${m.c}"><span class="li-ic">${icon(m.icon, 22)}</span><b>${m.title}</b><small>${on ? m.desc : 'خاموش است؛ برای فعال کردن بزن'}</small></button>`;
     }).join('');
     const extra = `<button class="mod-tile" data-a="nav.go" data-s="assistant" style="--c:var(--accent)"><span class="li-ic">${icon('sparkle',22)}</span><b>دستیار هوشمند</b><small>پرسیدن از دفتر، مرور روز و ثبت با یک جمله</small></button><button class="mod-tile" data-a="nav.go" data-s="review" style="--c:var(--accent)"><span class="li-ic">${icon('chart', 22)}</span><b>مرور هفته</b><small>آمار هفته و مرور جمعه‌شب</small></button><button class="mod-tile" data-a="nav.go" data-s="lists" style="--c:#8B5B32"><span class="li-ic">${icon('book', 22)}</span><b>فهرست‌های من</b><small>کتاب، فیلم و سریال و هر فهرست دلخواه</small></button><button class="mod-tile" data-a="nav.go" data-s="focus" style="--c:var(--c-tasks)"><span class="li-ic">${icon('timer', 22)}</span><b>تمرکز</b><small>تایمر کار و استراحت و آمار زمان تمرکز</small></button>${S.settings.cycleOn ? `<button class="mod-tile" data-a="nav.go" data-s="cycle" style="--c:var(--c-mood)"><span class="li-ic">${icon('heart', 22)}</span><b>چرخهٔ ماهانه</b><small>فصل امروز و پیش‌بینی دورهٔ بعد</small></button>` : ''}`;
     return { title: 'بخش‌ها', body: `<div class="mod-grid">${tiles}${extra}</div>` };
@@ -5124,13 +5160,13 @@ const Settings = (() => {
     body += UI.sec('فعال‌سازی', `<div class="set-group">${row('key', L.activated ? 'نسخهٔ فعال‌شده' : `دورهٔ آزمایشی: ${U.fa(License.daysLeft())} روز مانده`, `شناسهٔ گوشی: <span style="direction:ltr;display:inline-block">${L.id}</span>`, L.activated ? `<span class="pill green">${icon('check', 12)} فعال</span>` : '<span class="btn sm mod">ورود کد</span>', L.activated ? '' : 'data-a="settings.activate"')}</div>`);
     body += UI.sec('درباره', `<div class="set-group">${row('info', 'خودنگار', `نسخهٔ ${U.fa(APP_VERSION)} · ${Platform.isNative ? 'اندروید' : 'نسخهٔ وب'} · ذخیره‌سازی: ${{ idb: 'پایگاه دادهٔ مرورگر', ls: 'حافظهٔ ساده', memory: 'موقت (ذخیره نمی‌شود!)' }[DB.mode()]}`)}
       ${st.demo ? row('trash', 'حذف داده‌های نمونه', 'فقط داده‌های نمونه پاک می‌شوند', icon('chevL', 18), 'data-a="settings.clearDemo"') : row('sparkle', 'افزودن داده‌های نمونه', 'برای آشنایی و آزمایش', icon('chevL', 18), 'data-a="settings.demo"')}
-      ${row('trash', '<span class="danger-t">پاک کردن همهٔ داده‌ها</span>', 'غیرقابل بازگشت؛ پیش از آن پشتیبان بگیرید', '', 'data-a="settings.wipe"')}</div>`);
+      ${row('trash', '<span class="danger-t">پاک کردن همهٔ داده‌ها</span>', 'غیرقابل بازگشت؛ پیش از آن پشتیبان بگیر', '', 'data-a="settings.wipe"')}</div>`);
     return { title: 'تنظیمات', body };
   }
   function modules() {
     const order = S.settings.homeOrder.filter((id) => MODULE_ORDER.includes(id) && id !== 'tasks');
     MODULE_ORDER.forEach((id) => { if (id !== 'tasks' && !order.includes(id)) order.push(id); });
-    let body = `<p class="small muted">«فعال» یعنی بخش در برنامه وجود داشته باشد و کارهایش به فهرست امروز بیاید. «صفحهٔ اصلی» یعنی کارت خلاصه‌اش در صفحهٔ اصلی دیده شود. با فلش‌ها ترتیب کارت‌ها را عوض کنید.</p>`;
+    let body = `<p class="small muted">«فعال» یعنی بخش در برنامه وجود داشته باشد و کارهایش به فهرست امروز بیاید. «صفحهٔ اصلی» یعنی کارت خلاصه‌اش در صفحهٔ اصلی دیده شود. با فلش‌ها ترتیب کارت‌ها را عوض کن.</p>`;
     body += `<div class="set-group">${['tasks'].concat(order).map((id, i) => {
       const m = App.mods[id]; if (!m) return '';
       const mm = S.settings.modules[id];
@@ -5147,7 +5183,7 @@ const Settings = (() => {
     const sel = (ch, opts, cur) => `<select data-ch="${ch}">${opts.map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     body += `<div class="set-group">
       ${nr('tasks', 'یادآوری کارها', 'برای کارهایی که ساعت و یادآوری دارند', '', sw('settings.nflag', n.tasks, 'data-k="tasks"'))}
-      ${nr('repeat', 'یادآوری عادت‌ها', 'در ساعتی که برای هر عادت تعیین کرده‌اید', '', sw('settings.nflag', n.habits, 'data-k="habits"'))}
+      ${nr('repeat', 'یادآوری عادت‌ها', 'در ساعتی که برای هر عادت تعیین کرده‌ای', '', sw('settings.nflag', n.habits, 'data-k="habits"'))}
       ${nr('calendar', 'رویدادها و جلسه‌ها', 'طبق زمان یادآوری هر رویداد', '', sw('settings.nflag', n.events, 'data-k="events"'))}
       ${nr('sun', 'خلاصهٔ صبح', '', 'ساعت ' + t('morning', n.morning.time), sw('settings.non', n.morning.on, 'data-k="morning"'))}
       ${nr('moon', 'مرور شب و ثبت حال', '', 'ساعت ' + t('night', n.night.time), sw('settings.non', n.night.on, 'data-k="night"'))}
@@ -5181,7 +5217,7 @@ const Settings = (() => {
   function backup() {
     const bs = (S.backups || []).slice().sort((a, b) => b.at - a.at);
     const when = (b) => `${J.fmt(b.date, 'wd')} · ${U.fa(new Date(b.at).toTimeString().slice(0, 5))}`;
-    let body = `<div class="notice info">${icon('info', 18)}<div class="small">پشتیبان‌ها داخل خود برنامه نگه داشته می‌شوند. هر روز یک پشتیبان خودکار ساخته می‌شود (${U.fa(Backup.KEEP)} روز آخر) و با دکمهٔ زیر هر وقت خواستید یک پشتیبان دستی می‌سازید (${U.fa(Backup.KEEP_MANUAL)} تای آخر).${Platform.backupFiles.available ? ' یک نسخه هم در پوشهٔ <b dir="ltr">Documents/Khodnegar</b> گوشی ذخیره می‌شود.' : ''}</div></div>`;
+    let body = `<div class="notice info">${icon('info', 18)}<div class="small">پشتیبان‌ها داخل خود برنامه نگه داشته می‌شوند. هر روز یک پشتیبان خودکار ساخته می‌شود (${U.fa(Backup.KEEP)} روز آخر) و با دکمهٔ زیر هر وقت خواستی یک پشتیبان دستی می‌سازی (${U.fa(Backup.KEEP_MANUAL)} تای آخر).${Platform.backupFiles.available ? ' یک نسخه هم در پوشهٔ <b dir="ltr">Documents/Khodnegar</b> گوشی ذخیره می‌شود.' : ''}</div></div>`;
     body += `<button class="btn primary block" data-a="settings.saveNow">${icon('download', 18)} ذخیرهٔ پشتیبان همین حالا</button>`;
     body += UI.sec('پشتیبان‌های داخل برنامه', bs.length ? `<div class="list">${bs.map((b) => `<div class="li"><span class="li-ic" style="--c:var(--accent)">${icon(b.manual ? 'download' : 'clock')}</span><div class="li-t"><b>${when(b)}</b><small><span>${b.manual ? 'دستی' : 'خودکار'}</span><span>${U.num(Math.round(b.size / 1024))} کیلوبایت</span></small></div><button class="btn sm ghost" data-a="settings.restoreAuto" data-at="${b.at}">بازگردانی</button>${b.manual ? `<button class="icon-btn" data-a="settings.delBackup" data-at="${b.at}" aria-label="حذف">${icon('trash', 16)}</button>` : ''}</div>`).join('')}</div>` : '<p class="small muted">هنوز پشتیبانی ساخته نشده.</p>');
     if (Platform.backupFiles.available) body += UI.sec('پوشهٔ خودنگار در گوشی', `<div data-bfiles><p class="small muted">در حال خواندن…</p></div><p class="small muted">این فایل‌ها حتی اگر برنامه پاک شود در پوشهٔ Documents/Khodnegar گوشی می‌مانند.</p>`);
@@ -5196,7 +5232,7 @@ const Settings = (() => {
     return { title: 'پشتیبان‌گیری', body, mount };
   }
   async function restoreSnap(snap) {
-    if (!(await UI.confirm('همهٔ داده‌های فعلی با این پشتیبان جایگزین می‌شود. ادامه می‌دهید؟', { ok: 'بازگردانی', danger: true }))) return;
+    if (!(await UI.confirm('همهٔ داده‌های فعلی با این پشتیبان جایگزین می‌شود. ادامه می‌دهی؟', { ok: 'بازگردانی', danger: true }))) return;
     await DB.restore(snap); Defaults.ensure(); App.applyTheme(); App.setTab('home'); App.toast('بازگردانی انجام شد');
   }
   App.screen('settings', main);
@@ -5206,7 +5242,7 @@ const Settings = (() => {
   App.screen('settings/lists', lists);
   App.screen('settings/backup', backup);
   const A = (n, f) => App.act('settings.' + n, f);
-  A('name', () => UI.formSheet({ title: 'نام شما', fields: [{ k: 'name', label: 'نام' }], vals: { name: S.settings.name }, onSave: (v) => { S.settings.name = v.name; DB.save('settings'); App.refresh(); } }));
+  A('name', () => UI.formSheet({ title: 'نام تو', fields: [{ k: 'name', label: 'نام' }], vals: { name: S.settings.name }, onSave: (v) => { S.settings.name = v.name; DB.save('settings'); App.refresh(); } }));
   A('theme', () => App.go('settings/appearance'));
   A('unit', async () => { const r = await UI.menu('واحد نمایش مبالغ', [{ label: 'تومان', value: 'toman' }, { label: 'ریال', value: 'rial' }]); if (r) { S.settings.unit = r; DB.save('settings'); App.refresh(); } });
   A('rollover', (d, el) => { S.settings.rollover = el.checked; DB.save('settings'); });
@@ -5230,9 +5266,9 @@ const Settings = (() => {
   A('holDel', (d) => { S.settings.customHolidays.splice(+d.i, 1); DB.save('settings'); App.refresh(); });
   A('listAdd', (d) => UI.formSheet({ title: 'افزودن', fields: [{ k: 'v', label: 'عنوان', req: true }], vals: {}, onSave: (v) => { if (!S.settings[d.k].includes(v.v)) S.settings[d.k].push(v.v); DB.save('settings'); App.refresh(); } }));
   A('listDel', (d) => { S.settings[d.k].splice(+d.i, 1); DB.save('settings'); App.refresh(); });
-  A('export', () => UI.formSheet({ title: 'ارسال فایل پشتیبان', intro: '<p class="small muted">اگر رمز بگذارید، فایل رمزگذاری می‌شود (AES-256) و بدون رمز باز نمی‌شود. رمز را فراموش نکنید.</p>', fields: [{ k: 'pass', label: 'رمز فایل (اختیاری)' }], vals: {}, save: 'ساخت فایل',
-    onSave: async (v) => { try { const txt = await Backup.exportText(v.pass); const ok = Platform.saveFile(Backup.fileName(), txt); if (ok) App.toast('فایل پشتیبان آماده شد'); else setTimeout(() => UI.sheet({ title: 'متن پشتیبان', body: `<p class="small muted">در این نمای پیش‌نمایش، دانلود فایل ممکن نیست. متن زیر را کپی کنید و در یک فایل یا یادداشت امن نگه دارید.</p><textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea>` }), 250); } catch (e) { App.toast(e.message); return false; } } }));
-  A('copyJson', async () => { const txt = await Backup.exportText(); try { await navigator.clipboard.writeText(txt); App.toast('متن پشتیبان کپی شد؛ در یک یادداشت امن نگه دارید'); } catch (e) { UI.sheet({ title: 'متن پشتیبان', body: `<textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea><p class="small muted">همهٔ متن را انتخاب و کپی کنید.</p>` }); } });
+  A('export', () => UI.formSheet({ title: 'ارسال فایل پشتیبان', intro: '<p class="small muted">اگر رمز بگذاری، فایل رمزگذاری می‌شود (AES-256) و بدون رمز باز نمی‌شود. رمز را فراموش نکن.</p>', fields: [{ k: 'pass', label: 'رمز فایل (اختیاری)' }], vals: {}, save: 'ساخت فایل',
+    onSave: async (v) => { try { const txt = await Backup.exportText(v.pass); const ok = Platform.saveFile(Backup.fileName(), txt); if (ok) App.toast('فایل پشتیبان آماده شد'); else setTimeout(() => UI.sheet({ title: 'متن پشتیبان', body: `<p class="small muted">در این نمای پیش‌نمایش، دانلود فایل ممکن نیست. متن زیر را کپی کن و در یک فایل یا یادداشت امن نگه دار.</p><textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea>` }), 250); } catch (e) { App.toast(e.message); return false; } } }));
+  A('copyJson', async () => { const txt = await Backup.exportText(); try { await navigator.clipboard.writeText(txt); App.toast('متن پشتیبان کپی شد؛ در یک یادداشت امن نگه دار'); } catch (e) { UI.sheet({ title: 'متن پشتیبان', body: `<textarea rows="10" style="direction:ltr;font-size:11px" readonly>${U.esc(txt)}</textarea><p class="small muted">همهٔ متن را انتخاب و کپی کن.</p>` }); } });
   A('import', async (d, el) => {
     const f = el.files[0]; if (!f) return;
     const text = await f.text(); el.value = '';
@@ -5244,12 +5280,12 @@ const Settings = (() => {
   A('saveNow', async () => { const r = await Backup.saveNow(); App.refresh(); App.toast(r.file ? 'پشتیبان داخل برنامه و پوشهٔ گوشی ذخیره شد' : 'پشتیبان داخل برنامه ذخیره شد'); });
   A('delBackup', async (d) => { if (!(await UI.confirm('این پشتیبان حذف شود؟', { ok: 'حذف', danger: true }))) return; S.backups = S.backups.filter((x) => String(x.at) !== String(d.at)); DB.save('backups'); App.refresh(); });
   A('restoreFile', async (d) => { try { const text = await Platform.backupFiles.read(d.n); if (!text) { App.toast('فایل خوانده نشد'); return; } const o = JSON.parse(text); if (o.enc) UI.formSheet({ title: 'رمز فایل پشتیبان', fields: [{ k: 'p', label: 'رمز', req: true }], vals: {}, onSave: async (v) => { try { const snap = await Backup.parse(text, v.p); setTimeout(() => restoreSnap(snap), 250); } catch (e) { App.toast(e.message); return false; } } }); else await restoreSnap(o); } catch (e) { App.toast('فایل پشتیبان خوانا نیست'); } });
-  A('activate', () => UI.formSheet({ title: 'ورود کد فعال‌سازی', intro: `<p class="small muted">شناسهٔ این گوشی: <b style="direction:ltr;display:inline-block">${License.lic().id}</b><br>این شناسه را برای فروشنده بفرستید تا کد مخصوص این گوشی را بدهد.</p>`, fields: [{ k: 'code', label: 'کد', req: true, ph: 'XXXXX-XXXXX' }], vals: {}, save: 'فعال‌سازی',
+  A('activate', () => UI.formSheet({ title: 'ورود کد فعال‌سازی', intro: `<p class="small muted">شناسهٔ این گوشی: <b style="direction:ltr;display:inline-block">${License.lic().id}</b><br>این شناسه را برای فروشنده بفرست تا کد مخصوص این گوشی را بدهد.</p>`, fields: [{ k: 'code', label: 'کد', req: true, ph: 'XXXXX-XXXXX' }], vals: {}, save: 'فعال‌سازی',
     onSave: async (v) => { if (await License.activate(v.code)) { App.toast('فعال شد. ممنون!'); App.refresh(); } else { App.toast('کد درست نیست'); return false; } } }));
   A('demo', async () => { if (await UI.confirm('داده‌های نمونه اضافه شود؟ بعداً با یک دکمه پاک می‌شوند.', { ok: 'افزودن' })) { Demo.load(); App.setTab('home'); App.toast('داده‌های نمونه اضافه شد'); } });
-  A('clearDemo', async () => { if (await UI.confirm('داده‌های نمونه پاک شود؟ داده‌هایی که خودتان وارد کرده‌اید می‌ماند.', { ok: 'پاک کن', danger: true })) { Demo.clear(); App.refresh(); App.toast('داده‌های نمونه پاک شد'); } });
+  A('clearDemo', async () => { if (await UI.confirm('داده‌های نمونه پاک شود؟ داده‌هایی که خودت وارد کرده‌ای می‌ماند.', { ok: 'پاک کن', danger: true })) { Demo.clear(); App.refresh(); App.toast('داده‌های نمونه پاک شد'); } });
   A('wipe', async () => {
-    if (!(await UI.confirm('همهٔ کارها، اهداف، تراکنش‌ها، غذاها، تمرین‌ها و ثبت‌های حال برای همیشه پاک می‌شود. مطمئنید؟', { ok: 'پاک کردن همه‌چیز', danger: true, title: 'پاک کردن همهٔ داده‌ها' }))) return;
+    if (!(await UI.confirm('همهٔ کارها، اهداف، تراکنش‌ها، غذاها، تمرین‌ها و ثبت‌های حال برای همیشه پاک می‌شود. مطمئنی؟', { ok: 'پاک کردن همه‌چیز', danger: true, title: 'پاک کردن همهٔ داده‌ها' }))) return;
     const lic = S.settings.license; await DB.wipe(); Defaults.ensure(); S.settings.license = lic; DB.save('settings'); location.reload();
   });
   return {};
@@ -5308,7 +5344,7 @@ const QuickAdd = (() => {
         const n = NW[dm[1]] || Number(dm[1]);
         let mins = dm[2] === 'ساعت' ? Math.round(n * 60) : Math.round(n);
         if (dm[3]) mins += dm[3] === 'نیم' ? 30 : dm[3] === 'ربع' ? 15 : (+String(dm[3]).replace(/\D/g, '') || 0);
-        if (mins > 0 && mins <= 16 * 60) r.dur = mins; else r.error = 'مدت معتبر نیست؛ مثلاً «۴۵ دقیقه» یا «۲ ساعت» بنویسید.';
+        if (mins > 0 && mins <= 16 * 60) r.dur = mins; else r.error = 'مدت معتبر نیست؛ مثلاً «۴۵ دقیقه» یا «۲ ساعت» بنویس.';
       }
     }
     /* time */
@@ -5317,13 +5353,16 @@ const QuickAdd = (() => {
     if ((m = cut(/\s(?:از\s+)?ساعت\s*(\d{1,2})(?::(\d{2}))?\s*(?:تا|-)\s*(?:ساعت\s*)?(\d{1,2})(?::(\d{2}))?\s/)) || (m = cut(/\s(?:از\s+)?(\d{1,2}):(\d{2})\s*(?:تا|-)\s*(\d{1,2})(?::(\d{2}))?\s/))) {
       let h = +m[1], mi = +(m[2] || 0), eh = +m[3], emi = +(m[4] || 0);
       const pm = qual && /عصر|بعد|شب/.test(qual);
-      if (pm) { if (h < 12) h += 12; if (eh < 12) eh += 12; }
-      else if (qual === 'ظهر') { if (h < 6) h += 12; if (eh < 8) eh += 12; }
-      else if (!qual && h >= 1 && h <= 7) { h += 12; if (eh < 12) eh += 12; }
-      if (eh * 60 + emi <= h * 60 + mi && eh < 12) eh += 12;
-      const d = (eh * 60 + emi) - (h * 60 + mi);
+      if (pm) { if (h < 12) h += 12; else if (h === 12 && qual === 'شب') h = 0; }
+      else if (qual === 'ظهر') { if (h < 6) h += 12; }
+      else if (!qual && h >= 1 && h <= 7) h += 12;
+      /* v0.4.1: the end is the first clock reading after the start, so «۱۱ تا ۱۲ شب» = 23:00–24:00
+         and «۱۰ تا ۱ شب» = 22:00–01:00 (the task keeps its start day; the end shows «فردا») */
+      const st0 = h * 60 + mi; let en = null;
+      if (eh <= 24) for (const add of (eh <= 12 ? [0, 12, 24, 36] : [0, 24])) { const c = (eh + add) * 60 + emi; if (c > st0) { en = c; break; } }
+      const d = en === null ? 0 : en - st0;
       if (h < 24 && mi < 60 && emi < 60 && d > 0 && d <= 16 * 60) { r.time = J.pad(h) + ':' + J.pad(mi); r.dur = d; }
-      else r.error = 'بازهٔ ساعت معتبر نیست؛ مثلاً «ساعت ۵ تا ۷ عصر» بنویسید.';
+      else r.error = 'بازهٔ ساعت معتبر نیست؛ مثلاً «ساعت ۵ تا ۷ عصر» بنویس.';
     }
     if (r.time) { /* already set by a range */ }
     else if ((m = cut(/\s(?:ساعت\s*)?(\d{1,2}):(\d{2})\s/)) || (m = cut(/\sساعت\s*(\d{1,2})(?:\s*و\s*(نیم|ربع|\d{1,2}(?:\s*دقیقه)?))?\s/))) {
@@ -5331,7 +5370,7 @@ const QuickAdd = (() => {
       if (m[2] === 'نیم') mi = 30; else if (m[2] === 'ربع') mi = 15; else if (m[2]) mi = +String(m[2]).replace(/\D/g, '') || 0;
       if (qual) { if (/عصر|بعد|شب/.test(qual) && h < 12) h += 12; if (qual === 'ظهر' && h < 6) h += 12; if (qual === 'شب' && h === 12) h = 0; }
       else if (h >= 1 && h <= 7) h += 12;
-      if (h >= 0 && h < 24 && mi >= 0 && mi < 60) r.time = J.pad(h) + ':' + J.pad(mi); else r.error='ساعت معتبر نیست؛ مثلاً ۹:۳۰ بنویسید.';
+      if (h >= 0 && h < 24 && mi >= 0 && mi < 60) r.time = J.pad(h) + ':' + J.pad(mi); else r.error='ساعت معتبر نیست؛ مثلاً ۹:۳۰ بنویس.';
     }
     if (qual) s = s.replace(new RegExp(`\\s${qual}\\s`), ' ');
     /* amount */
@@ -5355,8 +5394,8 @@ const QuickAdd = (() => {
     if (r.kind === 'birthday' || r.kind === 'anniversary') r.rec = null;
     if(r.amount!==null&&(!Number.isSafeInteger(r.amount)||r.amount<=0))r.error='مبلغ باید مثبت و در محدودهٔ عددی معتبر باشد.';
     if(/(?:^|\s)-\d+.*(?:تومان|تومن|ریال|هزار|میلیون)/.test(norm(raw)))r.error='مبلغ منفی قابل ثبت نیست.';
-    if(r.kind==='money'&&r.rec)r.error='برای هزینهٔ تکراری از بخش قبوض استفاده کنید.';
-    if(!r.title)r.error=r.error||'عنوان کار یا توضیح هزینه را بنویسید.';
+    if(r.kind==='money'&&r.rec)r.error='برای هزینهٔ تکراری از بخش قبوض استفاده کن.';
+    if(!r.title)r.error=r.error||'عنوان کار یا توضیح هزینه را بنویس.';
     return r;
   }
   const KIND = { task: ['کار', 'tasks'], event: ['رویداد', 'calendar'], meeting: ['جلسه', 'meeting'], birthday: ['تولد', 'gift'], anniversary: ['سالگرد', 'heart'], money: ['مالی', 'wallet'] };
@@ -5368,7 +5407,7 @@ const QuickAdd = (() => {
     if (r.date) chips.push(`<span class="pill">${icon('calendar', 12)} ${J.rel(r.date)} ${J.fmt(r.date, 'short')}</span>`);
     if (r.time) chips.push(`<span class="pill">${icon('clock', 12)} ${U.fa(r.time)}</span>`);
     if (r.dur) chips.push(`<span class="pill">${icon('timer', 12)} ${TaskX.durLabel(r.dur)}</span>`);
-    if (r.kind === 'task' && !r.date && !r.rec && !r.time) chips.push(`<span class="pill">${icon('folder', 12)} صندوق · بدون تاریخ</span>`);
+    if (r.kind === 'task' && !r.date && !r.rec && (!r.time || r.inbox)) chips.push(`<span class="pill">${icon('folder', 12)} صندوق · بدون تاریخ</span>`);
     if (r.rec) chips.push(`<span class="pill">${icon('repeat', 12)} ${Rec.label(Object.assign({ start: r.date || J.today() }, r.rec))}</span>`);
     if (r.amount) chips.push(`<span class="pill">${U.money(r.amount, { force: true })}</span>`);
     if (r.kind === 'money' && App.on('finance')) chips.push(`<span class="pill">${U.esc(Finance.catName(Finance.guessCat(r.title, r.type)))}</span>`);
@@ -5381,8 +5420,8 @@ const QuickAdd = (() => {
     const today = J.today();
     if (kind === 'task') {
       /* v0.3.0: a task without date or repeat goes to the inbox (صندوق) */
-      const toInbox = !r.date && !r.rec && !r.time;
-      const t = { id: U.uid(), title: r.title || 'کار بدون عنوان', scope: App.on('work') ? r.scope : 'personal', date: toInbox ? null : (r.date || today), time: r.time, dur: r.dur || 0, priority: 0, rec: r.rec ? Object.assign({ start: r.date || today }, r.rec) : null, subtasks: [], note: '', done: false, created: Date.now(), reminder: r.time ? 0 : null, icon: TaskX.guessIcon(r.title || '') };
+      const toInbox = !r.date && !r.rec && (!r.time || r.inbox); /* v0.4.1: an explicit «بدون تاریخ» wins over a time */
+      const t = { id: U.uid(), title: r.title || 'کار بدون عنوان', scope: App.on('work') ? r.scope : 'personal', date: toInbox ? null : (r.date || today), time: r.time, dur: r.dur || 0, priority: 0, rec: r.rec ? Object.assign({ start: r.date || today }, r.rec) : null, subtasks: [], note: '', done: false, created: Date.now(), reminder: r.time && !toInbox ? 0 : null, icon: TaskX.guessIcon(r.title || '') };
       if (t.rec && t.rec.t === 'weekly' && !(t.rec.days || []).length) t.rec.days = [J.wd(t.date)];
       S.tasks.push(t); DB.save('tasks');
       if (toInbox) return { msg: 'کار «' + t.title + '» به صندوق رفت', task: t };
@@ -5398,7 +5437,7 @@ const QuickAdd = (() => {
     if (kind === 'money') {
       if (!App.on('finance')) { App.toast('بخش مالی خاموش است'); return null; }
       if(!Number.isSafeInteger(r.amount)||r.amount<=0||!S.accounts.length){App.toast('مبلغ یا حساب معتبر نیست');return null;}
-      if(r.date&&r.date>today){App.toast('برای ثبت مالی، تاریخ امروز یا گذشته را انتخاب کنید');return null;}
+      if(r.date&&r.date>today){App.toast('برای ثبت مالی، تاریخ امروز یا گذشته را انتخاب کن');return null;}
       const tx = { id: U.uid(), type: r.type, amount: r.amount, catId: Finance.guessCat(r.title, r.type), accountId: S.accounts[0].id, date: r.date && r.date <= today ? r.date : today, note: r.title, src: 'quick' };
       S.txs.push(tx); DB.save('txs');
       return { msg: (r.type === 'inc' ? 'درآمد ' : 'هزینهٔ ') + U.money(r.amount, { force: true }) + ' ثبت شد', tx };
@@ -5410,10 +5449,10 @@ const QuickAdd = (() => {
     const examples = ['فردا ساعت ۵ تا ۶ عصر باشگاه', 'خرید کتاب', 'امروز ۴۵ دقیقه مطالعه', '۲۵۰ هزار بنزین', 'جلسه با تأمین‌کننده پنجشنبه ساعت ۱۰', 'تولد مریم ۱۵ مهر', 'هر شنبه و دوشنبه کلاس زبان ساعت ۶', 'حقوق ۲۵ میلیون'];
     const s = UI.sheet({
       title: 'افزودن سریع',
-      body: `<div class="stack"><textarea id="qaText" rows="2" placeholder="هر چه در ذهن دارید بنویسید…" aria-label="متن افزودن سریع"></textarea>
+      body: `<div class="stack"><textarea id="qaText" rows="2" placeholder="هر چه در ذهن داری بنویس…" aria-label="متن افزودن سریع"></textarea>
         <div class="qa-preview" data-prev></div>
         <div data-kinds class="chips" hidden></div>
-        <div><p class="small muted">مثال‌ها (بزنید تا امتحان کنید):</p><div class="chips">${examples.map((e) => `<button type="button" class="chip" data-ex="${U.esc(e)}">${U.esc(e)}</button>`).join('')}</div></div>
+        <div><p class="small muted">مثال‌ها (بزن تا امتحانش کنی):</p><div class="chips">${examples.map((e) => `<button type="button" class="chip" data-ex="${U.esc(e)}">${U.esc(e)}</button>`).join('')}</div></div>
         <div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn sm ghost" data-full="task">${icon('tasks', 16)} فرم کامل کار</button>${App.on('calendar') ? `<button class="btn sm ghost" data-full="event">${icon('calendar', 16)} رویداد</button>` : ''}${App.on('finance') ? `<button class="btn sm ghost" data-full="money">${icon('wallet', 16)} هزینه</button>` : ''}${App.on('goals') ? `<button class="btn sm ghost" data-full="habit">${icon('repeat', 16)} عادت</button>` : ''}${App.on('mood') ? `<button class="btn sm ghost" data-full="mood">${icon('mood', 16)} حال</button>` : ''}</div></div>`,
       foot: '<button class="btn primary" data-save disabled>ثبت</button>',
     });
@@ -5484,14 +5523,14 @@ const Notify = (() => {
         });
       }
     }
-    if (n.morning.on) { const open = agenda.filter((i) => !i.done).length; add({ key: `morning:${iso}`, when: at(iso, n.morning.time), title: 'صبح بخیر', body: open ? `امروز ${U.fa(open)} کار در فهرست دارید.` : 'برنامهٔ امروز را بچینید.', icon: 'sun', open: 'home' }); }
-    if (n.night.on) { const left = agenda.filter((i) => !i.done && i.mod !== 'mood').length; add({ key: `night:${iso}`, when: at(iso, n.night.time), title: 'مرور شب', body: (App.on('mood') && !S.moods.some((m) => m.date === iso) ? 'حال امروز را ثبت کنید. ' : '') + (left ? `${U.fa(left)} کار باقی مانده.` : 'همهٔ کارها انجام شد!'), icon: 'moon', open: App.on('mood') ? 'mood' : 'home' }); }
+    if (n.morning.on) { const open = agenda.filter((i) => !i.done).length; add({ key: `morning:${iso}`, when: at(iso, n.morning.time), title: 'صبح بخیر', body: open ? `امروز ${U.fa(open)} کار در فهرست داری.` : 'برنامهٔ امروز را بچین.', icon: 'sun', open: 'home' }); }
+    if (n.night.on) { const left = agenda.filter((i) => !i.done && i.mod !== 'mood').length; add({ key: `night:${iso}`, when: at(iso, n.night.time), title: 'مرور شب', body: (App.on('mood') && !S.moods.some((m) => m.date === iso) ? 'حال امروز را ثبت کن. ' : '') + (left ? `${U.fa(left)} کار باقی مانده.` : 'همهٔ کارها انجام شد!'), icon: 'moon', open: App.on('mood') ? 'mood' : 'home' }); }
     if (n.finance.on && App.on('finance')) {
       const lim = n.finance.daysBefore || 0;
       S.bills.forEach((b) => { for (let k = 0; k <= lim; k++) { const d = J.addDays(iso, k); const nb = Finance.upcomingBills(lim + 1).find((x) => x.b.id === b.id && x.d === d); if (nb && !(b.paid || {})[d]) add({ key: `bill:${b.id}:${d}:${iso}`, when: at(iso, n.finance.time), title: (k ? 'سررسید ' + J.rel(d, iso) : 'سررسید امروز') + ': ' + b.title, body: U.money(b.amount, { force: true }), icon: 'receipt', open: 'finance' }); } });
     }
     if (n.water.on && App.on('food')) { for (let m = U.hmToMin(n.water.from); m <= U.hmToMin(n.water.to); m += (n.water.every || 2) * 60) add({ key: `water:${iso}:${m}`, when: at(iso, U.minToHM(m)), title: 'یک لیوان آب', body: `امروز ${U.fa(S.water[iso] || 0)} از ${U.fa(S.settings.waterTarget || 8)} لیوان`, icon: 'water', water: true, skip: () => (S.water[iso] || 0) >= (S.settings.waterTarget || 8) }); }
-    if (n.meals.on && App.on('food')) [['b', 'صبحانه'], ['l', 'ناهار'], ['d', 'شام']].forEach(([k, l]) => { if (n.meals[k]) add({ key: `meal:${k}:${iso}`, when: at(iso, n.meals[k]), title: 'وقت ' + l, body: 'یادتان نرود در دفتر کالری ثبت کنید.', icon: 'food', open: 'food', skip: () => S.meals.some((m) => m.date === iso && m.meal === k) }); });
+    if (n.meals.on && App.on('food')) [['b', 'صبحانه'], ['l', 'ناهار'], ['d', 'شام']].forEach(([k, l]) => { if (n.meals[k]) add({ key: `meal:${k}:${iso}`, when: at(iso, n.meals[k]), title: 'وقت ' + l, body: 'یادت نرود در دفتر کالری ثبت کنی.', icon: 'food', open: 'food', skip: () => S.meals.some((m) => m.date === iso && m.meal === k) }); });
     if (n.workout.on && App.on('workout')) Workout.todayRoutines(iso).forEach((r) => { add({ key: `workout:${r.id}:${iso}`, when: at(iso, n.workout.time), title: 'وقت تمرین: ' + r.name, body: U.fa(r.ex.length) + ' حرکت', icon: 'dumbbell', open: 'workout', skip: () => App.isDone(Workout.wkey(r.id, iso)) }); });
     if (n.review.on && J.wd(iso) === (n.review.day ?? 6)) add({ key: `review:${iso}`, when: at(iso, n.review.time), title: 'مرور هفتگی', body: '۵ دقیقه برای نگاه به هفته و برنامهٔ هفتهٔ بعد', icon: 'sparkle', open: 'review', skip: () => App.isDone('review:' + J.weekStart(iso)) });
     return out.sort(U.by((x) => x.when));
@@ -5619,7 +5658,7 @@ const Backup = (() => {
   async function parse(text, pass) {
     const o = JSON.parse(text);
     if (o.enc) {
-      if (!pass) throw new Error('این فایل رمز دارد؛ رمز را وارد کنید');
+      if (!pass) throw new Error('این فایل رمز دارد؛ رمز را وارد کن');
       try { const k = await key(pass, unb64(o.salt)); const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(o.iv) }, k, unb64(o.data)); return JSON.parse(new TextDecoder().decode(pt)); }
       catch (e) { throw new Error('رمز اشتباه است یا فایل خراب شده'); }
     }
@@ -5646,23 +5685,23 @@ const Lock = (() => {
     if (document.querySelector('.lockscr')) return;
     let pin = '';
     const el = document.createElement('div'); el.className = 'lockscr';
-    el.innerHTML = `<div class="brand"><div class="brand-mark">خ</div></div><b>رمز خودنگار را وارد کنید</b><div class="pin-dots">${'<i></i>'.repeat(4)}</div><p class="small muted" data-msg>&nbsp;</p><div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 'x', 0, 'ok'].map((k) => `<button data-k="${k}" aria-label="${k === 'x' ? 'پاک کردن' : k === 'ok' ? 'تأیید' : k}">${k === 'x' ? '⌫' : k === 'ok' ? '✓' : U.fa(k)}</button>`).join('')}</div>${Platform.biometric.available ? '<button class="btn ghost" data-bio>ورود با اثر انگشت</button>' : ''}<button class="link" data-forgot>رمز را فراموش کرده‌ام</button>`;
+    el.innerHTML = `<div class="brand"><div class="brand-mark">خ</div></div><b>رمز خودنگار را وارد کن</b><div class="pin-dots">${'<i></i>'.repeat(4)}</div><p class="small muted" data-msg>&nbsp;</p><div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 'x', 0, 'ok'].map((k) => `<button data-k="${k}" aria-label="${k === 'x' ? 'پاک کردن' : k === 'ok' ? 'تأیید' : k}">${k === 'x' ? '⌫' : k === 'ok' ? '✓' : U.fa(k)}</button>`).join('')}</div>${Platform.biometric.available ? '<button class="btn ghost" data-bio>ورود با اثر انگشت</button>' : ''}<button class="link" data-forgot>رمز را فراموش کرده‌ام</button>`;
     document.body.appendChild(el);
     const dots = () => { el.querySelectorAll('.pin-dots i').forEach((d, i) => d.classList.toggle('f', i < pin.length)); };
     const msg = (t) => { el.querySelector('[data-msg]').textContent = t; };
     const tryPin = async () => {
-      if (Date.now() < waitUntil) { msg('چند لحظه صبر کنید…'); return; }
+      if (Date.now() < waitUntil) { msg('چند لحظه صبر کن…'); return; }
       const h = await hash(pin, S.settings.lock.salt);
       if (h === S.settings.lock.hash) { fails = 0; el.remove(); if (onOk) onOk(); return; }
       fails++; pin = ''; dots(); el.querySelector('.pin-dots').classList.add('shake'); setTimeout(() => el.querySelector('.pin-dots').classList.remove('shake'), 400);
-      if (fails >= 5) { waitUntil = Date.now() + 30000; msg('۵ بار اشتباه؛ ۳۰ ثانیه صبر کنید'); } else msg('رمز اشتباه است');
+      if (fails >= 5) { waitUntil = Date.now() + 30000; msg('۵ بار اشتباه؛ ۳۰ ثانیه صبر کن'); } else msg('رمز اشتباه است');
     };
     el.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-k]');
       if (b) { const k = b.dataset.k; if (k === 'x') pin = pin.slice(0, -1); else if (k === 'ok') { if (pin.length >= 4) tryPin(); } else if (pin.length < 6) { pin += k; if (pin.length >= 4 && pin.length === (S.settings.lock.len || 4)) setTimeout(tryPin, 80); } dots(); }
       if (e.target.closest('[data-bio]')) { if (await Platform.biometric.verify()) { el.remove(); if (onOk) onOk(); } }
       if (e.target.closest('[data-forgot]')) {
-        if (await UI.confirm('رمز قابل بازیابی نیست. برای ادامه باید همهٔ داده‌های این گوشی پاک شود (بعد می‌توانید از فایل پشتیبان بازگردانی کنید). پاک شود؟', { ok: 'پاک کردن همه‌چیز', danger: true, title: 'فراموشی رمز' })) { const lic = S.settings.license; await DB.wipe(); Defaults.ensure(); S.settings.license = lic; DB.save('settings'); location.reload(); }
+        if (await UI.confirm('رمز قابل بازیابی نیست. برای ادامه باید همهٔ داده‌های این گوشی پاک شود (بعد می‌توانی از فایل پشتیبان بازگردانی کنی). پاک شود؟', { ok: 'پاک کردن همه‌چیز', danger: true, title: 'فراموشی رمز' })) { const lic = S.settings.license; await DB.wipe(); Defaults.ensure(); S.settings.license = lic; DB.save('settings'); location.reload(); }
       }
     });
     document.addEventListener('keydown', function kd(e) { if (!document.body.contains(el)) { document.removeEventListener('keydown', kd); return; } if (/^\d$/.test(e.key) && pin.length < 6) { pin += e.key; dots(); if (pin.length === (S.settings.lock.len || 4)) setTimeout(tryPin, 80); } if (e.key === 'Backspace') { pin = pin.slice(0, -1); dots(); } if (e.key === 'Enter' && pin.length >= 4) tryPin(); });
@@ -5675,7 +5714,7 @@ const Lock = (() => {
   });
   App.act('lock.now', () => show());
   async function setup() {
-    UI.formSheet({ title: 'تعیین رمز ورود', intro: '<p class="small muted">۴ رقم. با این رمز، باز کردن خودنگار روی این گوشی قفل می‌شود. رمز قابل بازیابی نیست؛ حتماً پشتیبان بگیرید.</p>',
+    UI.formSheet({ title: 'تعیین رمز ورود', intro: '<p class="small muted">۴ رقم. با این رمز، باز کردن خودنگار روی این گوشی قفل می‌شود. رمز قابل بازیابی نیست؛ حتماً پشتیبان بگیر.</p>',
       fields: [{ k: 'p1', label: 'رمز ۴ رقمی', type: 'num', req: true }, { k: 'p2', label: 'تکرار رمز', type: 'num', req: true }], vals: {},
       onSave: async (v) => { const a = String(v.p1 ?? ''), b = String(v.p2 ?? ''); if (!/^\d{4}$/.test(a)) { App.toast('رمز باید دقیقاً ۴ رقم باشد'); return false; } if (a !== b) { App.toast('دو رمز یکی نیست'); return false; } await setPin(a); S.settings.lock.len = 4; DB.save('settings'); App.refresh(); App.toast('قفل فعال شد'); } });
   }
@@ -5742,14 +5781,14 @@ const License = (() => {
     if (document.querySelector('.onb.lic')) return;
     const L = lic();
     const el = document.createElement('div'); el.className = 'onb lic';
-    el.innerHTML = `<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b>خودنگار</b></div><h1>دورهٔ آزمایشی تمام شد</h1><p class="lead">برای ادامهٔ استفاده، کد فعال‌سازی را از فروشنده بگیرید. داده‌های شما سالم و روی همین گوشی است.</p>
-      <div class="card stack"><small class="muted">شناسهٔ این گوشی (برای فروشنده بفرستید)</small><div class="row"><b class="big grow" style="direction:ltr;text-align:left">${L.id}</b><button class="btn sm ghost" data-copy>${icon('copy', 16)} کپی</button></div></div>
+    el.innerHTML = `<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b>خودنگار</b></div><h1>دورهٔ آزمایشی تمام شد</h1><p class="lead">برای ادامهٔ استفاده، کد فعال‌سازی را از فروشنده بگیر. داده‌هایت سالم و روی همین گوشی است.</p>
+      <div class="card stack"><small class="muted">شناسهٔ این گوشی (برای فروشنده بفرست)</small><div class="row"><b class="big grow" style="direction:ltr;text-align:left">${L.id}</b><button class="btn sm ghost" data-copy>${icon('copy', 16)} کپی</button></div></div>
       <div class="fld"><label for="licCode">کد فعال‌سازی</label><input id="licCode" style="direction:ltr;text-align:center;letter-spacing:2px" placeholder="XXXXX-XXXXX" autocomplete="off"></div>
       <button class="btn primary block" data-act>فعال‌سازی</button><p class="small" data-msg></p>
       <button class="btn ghost block" data-bk>${icon('download', 18)} گرفتن فایل پشتیبان از داده‌ها</button></div>`;
     document.body.appendChild(el);
     el.querySelector('[data-copy]').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(L.id).then(() => App.toast('کپی شد'), () => App.toast(L.id)); };
-    el.querySelector('[data-act]').onclick = async () => { if (await activate(el.querySelector('#licCode').value)) { el.remove(); App.toast('خودنگار فعال شد. ممنون از خرید شما!'); Lock.boot(); App.refresh(); } else el.querySelector('[data-msg]').innerHTML = '<span class="danger-t">کد درست نیست. شناسهٔ گوشی را دوباره برای فروشنده بفرستید.</span>'; };
+    el.querySelector('[data-act]').onclick = async () => { if (await activate(el.querySelector('#licCode').value)) { el.remove(); App.toast('خودنگار فعال شد. ممنون از خریدت!'); Lock.boot(); App.refresh(); } else el.querySelector('[data-msg]').innerHTML = '<span class="danger-t">کد درست نیست. شناسهٔ گوشی را دوباره برای فروشنده بفرست.</span>'; };
     el.querySelector('[data-bk]').onclick = async () => { const txt = await Backup.exportText(); if (!Platform.saveFile(Backup.fileName(), txt)) App.toast('دانلود در این صفحه ممکن نیست'); };
   }
   return { check, activate, daysLeft, active, codeFor, lic, TRIAL_DAYS, show, sha256 };
@@ -5770,8 +5809,8 @@ const Onboard = (() => {
       let h = `<div class="onb-in"><div class="steps-dots">${[0, 1, 2, 3, 4].map((i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('')}</div>`;
       if (step === 0) h += `<div class="brand"><div class="brand-mark">خ</div><b>خودنگار، به سلیقهٔ تو</b></div><div class="appearance-intro"><h1>برنامه‌ات چه ظاهری داشته باشد؟</h1><p>ظاهر، پالت رنگی و روشنایی را انتخاب کن؛ بعداً هم می‌توانی از تنظیمات عوضشان کنی.</p></div>${Appearance.controls()}`;
       if (step === 1) h += `<div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><div class="onb-art" aria-hidden="true">${InkScenes.picture('home')}</div><h1>دفتر زندگی تو، به خط خودت</h1><p class="lead">کارها، اهداف و عادت‌ها، تقویم شمسی، مالی، غذا، ورزش و حال روحی؛ همه کنار هم و روی همین دستگاه.</p><h2 style="font-size:17px;margin:0">ثبت‌نام</h2><div class="stack" data-reg>${Account.fieldsHtml(reg)}</div>`;
-      if (step === 2) h += `<h1>بیشتر به کدام نزدیک‌ترید؟</h1><p class="lead">بخش‌ها و چند هدف و عادت نمونه را برایتان آماده می‌کنیم. بعداً همه‌چیز قابل تغییر است.</p><div class="persona-grid">${Object.entries(P).map(([k, p]) => `<button class="persona ${k === persona ? 'on' : ''}" data-p="${k}">${icon(p.icon, 22)}<b>${p.label}</b><small>${p.desc}</small></button>`).join('')}</div>`;
-      if (step === 3) h += `<h1>کدام بخش‌ها را می‌خواهید؟</h1><p class="lead">بخش‌های خاموش در برنامه دیده نمی‌شوند. هر وقت خواستید از تنظیمات روشنشان کنید.</p><div class="set-group">${MODULE_ORDER.map((id) => { const m = App.mods[id]; return `<label class="set-row"><span class="li-ic" style="--c:${m.c}">${icon(m.icon)}</span><div class="grow"><b>${m.title}</b><small>${m.desc}</small></div><span class="switch"><input type="checkbox" data-m="${id}" ${mods.includes(id) ? 'checked' : ''} ${id === 'tasks' ? 'disabled' : ''}><span></span></span></label>`; }).join('')}</div>`;
+      if (step === 2) h += `<h1>بیشتر به کدام نزدیک‌تری؟</h1><p class="lead">بخش‌ها و چند هدف و عادت نمونه را برایت آماده می‌کنیم. بعداً همه‌چیز قابل تغییر است.</p><div class="persona-grid">${Object.entries(P).map(([k, p]) => `<button class="persona ${k === persona ? 'on' : ''}" data-p="${k}">${icon(p.icon, 22)}<b>${p.label}</b><small>${p.desc}</small></button>`).join('')}</div>`;
+      if (step === 3) h += `<h1>کدام بخش‌ها را می‌خواهی؟</h1><p class="lead">بخش‌های خاموش در برنامه دیده نمی‌شوند. هر وقت خواستی از تنظیمات روشنشان کن.</p><div class="set-group">${MODULE_ORDER.map((id) => { const m = App.mods[id]; return `<label class="set-row"><span class="li-ic" style="--c:${m.c}">${icon(m.icon)}</span><div class="grow"><b>${m.title}</b><small>${m.desc}</small></div><span class="switch"><input type="checkbox" data-m="${id}" ${mods.includes(id) ? 'checked' : ''} ${id === 'tasks' ? 'disabled' : ''}><span></span></span></label>`; }).join('')}</div>`;
       if (step === 4) h += `<h1>آخرین قدم</h1><div class="fld"><label>مبالغ به چه واحدی نمایش داده شوند؟</label><div class="chips"><label class="chip-r"><input type="radio" name="onbU" value="toman" ${unit === 'toman' ? 'checked' : ''}><span>تومان</span></label><label class="chip-r"><input type="radio" name="onbU" value="rial" ${unit === 'rial' ? 'checked' : ''}><span>ریال</span></label></div></div>
         <label class="set-group set-row" style="padding:12px 14px"><div class="grow"><b>با داده‌های نمونه شروع کن</b><small>برای آشنایی با برنامه، چند کار، تراکنش، تمرین و ثبت حال نمونه ساخته می‌شود. بعداً از تنظیمات پاک می‌شوند.</small></div><span class="switch"><input type="checkbox" id="onbDemo" ${demo ? 'checked' : ''}><span></span></span></label>
         <div class="notice info">${icon('lock', 18)}<div class="small">داده‌های برنامه فقط روی همین گوشی ذخیره می‌شود و هر روز یک پشتیبان خودکار داخل برنامه ساخته می‌شود. دورهٔ آزمایشی: ${U.fa(License.TRIAL_DAYS)} روز.</div></div>`;
@@ -5804,7 +5843,7 @@ const Onboard = (() => {
         DB.save('settings');
         window.removeEventListener('appearancechange',onAppearance);
         App.applyTheme(); el.remove(); App.setTab('home'); Backup.auto();
-        App.toast('به خودنگار خوش آمدید' + (name ? '، ' + name : ''));
+        App.toast('به خودنگار خوش آمدی' + (name ? '، ' + name : ''));
         Guide.invite();
       }
     });
@@ -6027,7 +6066,7 @@ const Appearance = (() => {
   if(mq.addEventListener)mq.addEventListener('change',onSystemChange);else mq.addListener(onSystemChange);
   const layouts = {
     notebook: {id:'notebook', name:'دفتر خودنگار', note:'ظاهر فعلی، با حس‌وحال دفتر'},
-    structured: {id:'structured', name:'Structured', note:'خط زمانی و کارت‌های رنگی'}
+    structured: {id:'structured', name:'ریتم', note:'خط زمانی و کارت‌های رنگی'}
   };
   function layout(){return layouts[S.settings.layout] || layouts.notebook;}
   function preview(){
@@ -6072,7 +6111,7 @@ const Appearance = (() => {
     }
     const el=document.createElement('div');el.className='onb appearance-step';
     el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','انتخاب ظاهر خودنگار');
-    const draw=()=>{const old=document.activeElement,a=old?.dataset.a,id=old?.dataset.id,scroll=el.scrollTop;el.innerHTML=`<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b>خودنگار، به سلیقهٔ تو</b></div><div class="appearance-intro"><h1>ظاهر برنامه را انتخاب کن</h1><p>ظاهر Structured اضافه شده. می‌توانی همین ظاهر فعلی را نگه داری یا ترکیب تازه‌ای را امتحان کنی.</p></div>${controls()}<div class="onb-footer"><button class="btn primary block" data-finish-appearance>ذخیره و ورود به برنامه ${icon('chevL',18)}</button></div></div>`;el.scrollTop=scroll;focusChoice(el,a,id);};
+    const draw=()=>{const old=document.activeElement,a=old?.dataset.a,id=old?.dataset.id,scroll=el.scrollTop;el.innerHTML=`<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b>خودنگار، به سلیقهٔ تو</b></div><div class="appearance-intro"><h1>ظاهر برنامه را انتخاب کن</h1><p>ظاهر تازهٔ «ریتم» اضافه شده. می‌توانی همین ظاهر فعلی را نگه داری یا ترکیب تازه‌ای را امتحان کنی.</p></div>${controls()}<div class="onb-footer"><button class="btn primary block" data-finish-appearance>ذخیره و ورود به برنامه ${icon('chevL',18)}</button></div></div>`;el.scrollTop=scroll;focusChoice(el,a,id);};
     document.body.append(el);draw();
     const blocked=[document.getElementById('app'),document.querySelector('.tabs'),document.getElementById('desktopNav')].filter(Boolean);
     const wasInert=blocked.map(x=>x.inert);blocked.forEach(x=>x.inert=true);
@@ -6119,7 +6158,7 @@ const Companion = (() => {
   }
   function daily(date=J.today(),priorities=false){
     const items=todayTasks(date), open=items.filter(x=>!x.done).sort((a,b)=>(b.t.priority||0)-(a.t.priority||0)||(a.t.time||'99').localeCompare(b.t.time||'99'));
-    if(priorities)return open.length?'سه قدم پیشنهادی بر اساس اولویت و ساعت ثبت‌شده:\n'+open.slice(0,3).map((x,i)=>`${U.fa(i+1)}. ${x.t.title}${x.t.time?' · '+U.fa(x.t.time):''}`).join('\n')+'\n\nاز یکی شروع کن؛ لازم نیست همه را یک‌جا انجام بدهی.':'کار بازی برای این روز ثبت نشده. می‌توانی یک کار کوچک اضافه کنی.';
+    if(priorities)return open.length?'سه قدم پیشنهادی بر اساس اولویت و ساعت ثبت‌شده:\n'+open.slice(0,3).map((x,i)=>`${U.fa(i+1)}. ${x.t.title}${x.t.time?' · '+U.fa(x.t.time):''}`).join('\n')+'\n\nاز یکی شروع کن؛ لازم نیست همه را یک‌جا انجام بدهی.':'کار انجام‌نشده‌ای برای این روز ثبت نشده. می‌توانی یک کار کوچک اضافه کنی.';
     const lines=[J.fmt(date,'full'),`${U.fa(items.length)} کار ثبت‌شده؛ ${U.fa(items.filter(x=>x.done).length)} انجام‌شده و ${U.fa(open.length)} باز.`];
     if(open.length)lines.push('\nکارهای پیش رو:\n'+open.slice(0,6).map(x=>'• '+x.t.title+(x.t.time?' · '+U.fa(x.t.time):'')).join('\n'));
     if(App.on('calendar')){const events=App.agenda(date).filter(x=>x.mod==='calendar');if(events.length)lines.push('\nقرارها و رویدادها:\n'+events.slice(0,5).map(x=>'• '+x.title+(x.time?' · '+U.fa(x.time):'')).join('\n'));}
@@ -6182,7 +6221,7 @@ const Companion = (() => {
   }
   function proposal(raw){
     const s=normalize(raw);const w=s.match(/^(?:ثبت کن\s*[:：]?\s*|ثبت\s*[:：]?\s*)?(\d{1,2})\s*لیوان\s*آب(?:\s*(?:خوردم|نوشیدم|ثبت کن|اضافه کن))?[.!؟?]?$/);
-    if(w){if(!App.on('food'))return {error:'برای ثبت آب، ابتدا بخش تغذیه را روشن کن.'};const n=+w[1];if(n<1||n>20)return {error:'تعداد آب باید بین ۱ و ۲۰ لیوان باشد.'};return {kind:'water',n,date:J.today(),raw,status:'pending'};}
+    if(w){if(!App.on('food'))return {error:'برای ثبت آب، ابتدا بخش تغذیه را روشن کن.'};const n=+w[1];if(n<1||n>20)return {error:'تعداد لیوان‌های آب باید بین ۱ تا ۲۰ باشد.'};return {kind:'water',n,date:J.today(),raw,status:'pending'};}
     const explicit=/^(ثبت(?: کن)?|اضافه کن|یادآوری کن)\s*[:：]?\s+/.test(s)||/\s(?:ثبت کن|اضافه کن|یادآوری کن)[.!؟?]?$/.test(s);
     if(!explicit)return null;
     const content=s.replace(/^(ثبت(?: کن)?|اضافه کن|یادآوری کن)\s*[:：]?\s*/,'').replace(/\s(?:ثبت کن|اضافه کن|یادآوری کن)[.!؟?]?$/,'').trim();
@@ -6208,9 +6247,9 @@ const Companion = (() => {
     return reply('این را متوجه نشدم. در حالت آفلاین از ثبت‌های همین دفتر جواب می‌دهم؛ مثلاً بپرس:\n• تولد علی کی است؟\n• تولدهای پیش رو\n• امروزم را خلاصه کن\n• سه کار مهم\n• هزینه‌های این ماه\n• ثبت کن فردا ساعت ۹ صبح خرید نان\n• ۲ لیوان آب خوردم\n• جستجو خرید\n\nبرای گفت‌وگوی آزاد، حالت آنلاین را در تنظیمات دستیار روشن کن.',{mode:'local'});
   }
   function endpoint(raw){
-    let url;try{url=new URL(raw);}catch{throw new Error('نشانی سرویس معتبر نیست.');}const loop=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
-    if(url.protocol!=='https:'&&!(url.protocol==='http:'&&loop))throw new Error('نشانی باید HTTPS باشد؛ HTTP فقط برای localhost مجاز است.');
-    if(url.username||url.password||url.search||url.hash)throw new Error('نشانی سرویس نباید شامل رمز، کلید یا پارامتر باشد.');
+    let url;try{url=new URL(raw);}catch{throw new Error('نشانی سرور واسط درست نیست.');}const loop=['localhost','127.0.0.1','[::1]'].includes(url.hostname);
+    if(url.protocol!=='https:'&&!(url.protocol==='http:'&&loop))throw new Error('نشانی باید امن باشد و با https:// شروع شود. نشانی ناامن (http://) فقط برای سروری روی همین دستگاه پذیرفته می‌شود.');
+    if(url.username||url.password||url.search||url.hash)throw new Error('نشانی سرور واسط نباید شامل رمز، کلید یا پارامتر باشد.');
     return url.href;
   }
   async function online(raw){
@@ -6277,6 +6316,7 @@ const Companion = (() => {
     const masked=m.sensitive&&S.settings.hideMoney;
     return `<article class="chat-message ${m.role==='user'?'user':'bot'}"><div class="chat-meta"><b>${m.role==='user'?'تو':m.mode==='online'?'دستیار هوشمند · آنلاین':'دستیار هوشمند'}</b><span>${new Date(m.at).toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'})}</span></div><div class="chat-text">${U.esc(masked?'این پیام ممکن است شامل اطلاعات مالی باشد؛ نمایش آن با پنهان بودن مبالغ متوقف است.':m.text)}</div>${masked?'':proposalHtml(m)}${m.setup?'<button class="btn sm ghost" data-a="nav.go" data-s="settings/assistant">تنظیم اتصال آنلاین</button>':''}${m.retry?`<button class="btn sm ghost assistant-retry" data-a="assistant.retry" data-id="${m.id}">تلاش دوباره</button>`:''}</article>`;
   }
+  let seen=-1;
   function screen(){
     const isOnline=settings().mode==='online';
     return {title:'دستیار هوشمند',sub:'از دفترت بپرس؛ کوتاه و روشن',head:`<button class="icon-btn" data-a="nav.go" data-s="settings/assistant" aria-label="تنظیمات دستیار">${icon('settings')}</button>`,body:`
@@ -6287,27 +6327,40 @@ const Companion = (() => {
     <div class="assistant-chat" role="log" aria-live="polite" aria-relevant="additions text">${messages().length?messages().map(renderMessage).join(''):'<div class="chat-empty">سؤالت را بنویس؛ مثلاً:<br>«تولد علی کی است؟»<br>«ثبت کن فردا ساعت ۹ صبح خرید نان»</div>'}${busy?'<div class="chat-busy" role="status">در انتظار پاسخ… <button class="link" data-a="assistant.stop">توقف</button></div>':''}</div>
     <form class="chat-composer" aria-label="ارسال پیام"><textarea id="assistantText" rows="2" maxlength="3000" placeholder="پیامت را اینجا بنویس…" aria-label="پیام به دستیار">${U.esc(draft)}</textarea><button type="submit" class="btn primary" ${busy?'disabled':''} aria-label="ارسال پیام">${icon('arrowUp',22)}</button></form></section>
     <p class="chat-note">${isOnline?'هر بار فقط پیام تازه ارسال می‌شود'+(settings().shareContext?'، همراه خلاصه‌ای که در تنظیمات اجازه داده‌ای.':'. داده‌های دفتر خودکار ارسال نمی‌شوند.'):'در حالت آفلاین، دستیار فقط از ثبت‌های همین دفتر جواب می‌دهد و چیزی به اینترنت نمی‌فرستد. برای گفت‌وگوی آزاد، حالت آنلاین را از تنظیمات دستیار روشن کن.'}</p>
-    <p class="chat-note">ثبت‌ها به تأیید تو نیاز دارند. گفت‌وگو روی همین مرورگر ذخیره و در پشتیبان شامل می‌شود. پیشنهادها جای نظر تخصصی را نمی‌گیرند.</p>`,mount(root){
-      const log=root.querySelector('.assistant-chat');log.scrollTop=log.scrollHeight;
+    <p class="chat-note">ثبت‌ها به تأیید تو نیاز دارند. گفت‌وگو روی همین گوشی ذخیره می‌شود و در فایل پشتیبان هم می‌آید. پیشنهادها جای نظر تخصصی را نمی‌گیرند.</p>`,mount(root){
+      /* v0.4.1: the chat is part of the page (no inner scroller that traps touch scrolling);
+         when a new message arrives, bring it into view above the composer */
+      const log=root.querySelector('.assistant-chat'),count=messages().length+(busy?1:0);
+      if(seen>=0&&count>seen){const last=log.lastElementChild;if(last)requestAnimationFrame(()=>last.scrollIntoView({block:'end',behavior:'smooth'}));}
+      seen=count;
       const ta=root.querySelector('#assistantText');ta.oninput=()=>{draft=ta.value;};
       root.querySelector('form').onsubmit=e=>{e.preventDefault();send(ta.value);};
       ta.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send(ta.value);}};
     }};
   }
+  /* v0.4.1: the data preview in plain Persian instead of raw JSON keys */
+  function contextText(c){
+    const lines=['تاریخ: '+c.date];
+    if(c.tasks.length){lines.push('کارهای امروز:');c.tasks.forEach(t=>lines.push('• '+t.title+(t.time?' · ساعت '+U.fa(t.time):'')+' · '+(t.done?'انجام شده':'انجام نشده')));}
+    else lines.push('کارهای امروز: کاری ثبت نشده');
+    if(c.monthlyMoney)lines.push('جمع درآمد این ماه: '+U.money(c.monthlyMoney.income,{force:true}),'جمع هزینهٔ این ماه: '+U.money(c.monthlyMoney.expense,{force:true}));
+    else lines.push('خلاصهٔ مالی: فرستاده نمی‌شود');
+    return lines.join('\n');
+  }
   function configScreen(){
     const cfg=settings(),defaultUrl=location.protocol==='file:'?'http://127.0.0.1:8787/api/chat':location.origin+'/api/chat';
     return {title:'تنظیمات دستیار هوشمند',body:`<section class="appearance-hero"><span class="pill mod">انتخاب با توست</span><h2>محلی یا آنلاین؟</h2><p class="muted">مرور دفتر و ثبت با تأیید، همیشه آفلاین در دسترس است.</p></section>
-    <form id="assistantConfig" class="connection-card"><label class="field"><span>حالت گفت‌وگو</span><select name="mode"><option value="local" ${cfg.mode!=='online'?'selected':''}>محلی · قواعد آفلاین</option><option value="online" ${cfg.mode==='online'?'selected':''}>آنلاین · مدل هوش مصنوعی</option></select></label>
-    <p>برای حالت آنلاین، سرویس همراهِ بستهٔ برنامه را اجرا کن. کلید OpenAI فقط روی سرور می‌ماند.</p>
-    <label class="field"><span>نشانی سرویس همراه</span><input name="endpoint" dir="ltr" type="url" value="${U.esc(cfg.endpoint)}" placeholder="${U.esc(defaultUrl)}" autocomplete="off"></label>
-    <label class="field"><span>رمز اتصال به سرویس همراه</span><input name="token" type="password" dir="ltr" value="" placeholder="${accessToken?'رمز برای این نشست وارد شده':'توکن تعیین‌شده در سرور'}" autocomplete="off"><small class="muted">کلید OpenAI را اینجا وارد نکن. رمز اتصال فقط تا بستن یا بارگذاری دوبارهٔ صفحه نگه داشته می‌شود.</small></label>
-    <div class="assistant-privacy"><label class="row"><input type="checkbox" name="share" ${cfg.shareContext?'checked':''}><span>اجازه می‌دهم عنوان، ساعت و وضعیت کارهای امروز و جمع هزینه و درآمد این ماه همراه پیامم ارسال شود.</span></label><p>یادداشت‌ها، حال‌و‌احوال، اطلاعات بدن و رمزها ارسال نمی‌شوند. با پنهان بودن مبالغ، خلاصهٔ مالی هم ارسال نمی‌شود.</p><details><summary>دیدن دادهٔ قابل ارسال در حال حاضر</summary><pre class="context-preview">${U.esc(JSON.stringify(context(),null,2))}</pre></details></div>
-    <button type="submit" class="btn primary">ذخیرهٔ تنظیمات</button><div class="assistant-alert" role="status" id="assistantConfigStatus">${cfg.mode==='online'?'برای پاسخ آنلاین، سرویس باید اجرا شده باشد.':'در حالت محلی هیچ درخواستی به اینترنت ارسال نمی‌شود.'}</div></form>`,mount(root){
+    <form id="assistantConfig" class="connection-card"><label class="field"><span>حالت گفت‌وگو</span><select name="mode"><option value="local" ${cfg.mode!=='online'?'selected':''}>محلی · بدون اینترنت</option><option value="online" ${cfg.mode==='online'?'selected':''}>آنلاین · هوش مصنوعی (نیاز به سرور واسط)</option></select></label>
+    <p>در حالت آنلاین، پیامت برای یک هوش مصنوعی در اینترنت فرستاده می‌شود. برای این کار خودنگار به یک «سرور واسط» نیاز دارد: سروری که پیام را می‌گیرد، به هوش مصنوعی می‌دهد و پاسخ را برمی‌گرداند. این سرور هنوز راه‌اندازی نشده و در نسخه‌های بعدی، همراه حساب کاربری، خودکار وصل می‌شود. تا آن زمان حالت محلی را نگه دار؛ اگر سازنده به تو نشانی و رمز سرور واسط داده است، پایین واردشان کن.</p>
+    <label class="field"><span>نشانی سرور واسط (از سازنده بگیر)</span><input name="endpoint" dir="ltr" type="url" value="${U.esc(cfg.endpoint)}" placeholder="https://…" autocomplete="off"></label>
+    <label class="field"><span>رمز اتصال به سرور واسط</span><input name="token" type="password" dir="ltr" value="" placeholder="${accessToken?'رمز برای این نشست وارد شده':'رمزی که سازنده داده است'}" autocomplete="off"><small class="muted">کلید حساب هوش مصنوعی (مثلاً کلیدی که با sk- شروع می‌شود) را اینجا وارد نکن. رمز اتصال فقط تا بستن برنامه نگه داشته می‌شود.</small></label>
+    <div class="assistant-privacy"><label class="row"><input type="checkbox" name="share" ${cfg.shareContext?'checked':''}><span>اجازه می‌دهم عنوان، ساعت و وضعیت کارهای امروز و جمع هزینه و درآمد این ماه همراه پیامم ارسال شود.</span></label><p>یادداشت‌ها، حال‌و‌احوال، اطلاعات بدن و رمزها ارسال نمی‌شوند. با پنهان بودن مبالغ، خلاصهٔ مالی هم ارسال نمی‌شود.</p><details><summary>ببین دقیقاً چه چیزی فرستاده می‌شود</summary><pre class="context-preview">${U.esc(contextText(context()))}</pre></details></div>
+    <button type="submit" class="btn primary">ذخیرهٔ تنظیمات</button><div class="assistant-alert" role="status" id="assistantConfigStatus">${cfg.mode==='online'?'برای پاسخ آنلاین، سرور واسط باید در دسترس باشد.':'در حالت محلی هیچ درخواستی به اینترنت ارسال نمی‌شود.'}</div></form>`,mount(root){
       root.querySelector('form').onsubmit=e=>{e.preventDefault();const f=e.currentTarget,status=root.querySelector('#assistantConfigStatus');try{
         const next={mode:f.mode.value,endpoint:f.endpoint.value.trim(),shareContext:f.share.checked};
         if(next.endpoint)next.endpoint=endpoint(next.endpoint);
-        const token=f.token.value.trim();if(/^sk-/.test(token))throw new Error('این شبیه کلید OpenAI است. فقط رمز اتصال سرور را وارد کن.');
-        if(next.mode==='online'&&!next.endpoint)throw new Error('نشانی سرویس همراه را وارد کن.');
+        const token=f.token.value.trim();if(/^sk-/.test(token))throw new Error('این شبیه کلید حساب هوش مصنوعی است، نه رمز اتصال. فقط رمز اتصال سرور واسط را وارد کن.');
+        if(next.mode==='online'&&!next.endpoint)throw new Error('نشانی سرور واسط را وارد کن.');
         if(next.endpoint!==cfg.endpoint&&!token)accessToken='';
         S.settings.assistant=next;if(token)accessToken=token;DB.save('settings');status.textContent='تنظیمات ذخیره شد.';App.toast('تنظیمات دستیار ذخیره شد.');f.token.value='';
       }catch(err){status.textContent=err.message;}};
@@ -6330,19 +6383,19 @@ const Guide=(()=>{
  ['home','home','شروع و صفحهٔ امروز','خانهٔ دفتر تو', ['در صفحهٔ «امروز»، تاریخ، کارهای امروز و خلاصهٔ بخش‌های فعال را ببین.','با «کار جدید» یک کار بساز؛ برای انجام شدن آن، تیک کنار کار را بزن.','با نوار پایین بین امروز، تقویم، بخش‌ها و تنظیمات جابه‌جا شو؛ دکمهٔ + برای افزودن سریع است.'],['امروز، برای خودت','□ کارهای امروز','＋ افزودن سریع']],
  ['tasks','tasks','کارها و اولویت‌ها','یک قدم در هر بار',['از بخش «کارها» یا «کار جدید» در صفحهٔ اصلی وارد فرم ثبت شو.','عنوان، تاریخ شمسی، ساعت و اولویت را مشخص کن؛ برای کار تکراری، تکرار را تنظیم کن.','کار را ذخیره کن. تیک کنار آن وضعیت انجام را تغییر می‌دهد؛ روی عنوان بزن تا جزئیات را ویرایش کنی.'],['۱  عنوان و تاریخ','۲  ساعت، اولویت و تکرار','۳  ذخیره ← انجام شد ✓']],
  ['quick','plus','افزودن سریع','فکرت را به یک ثبت تبدیل کن',['روی + وسط نوار پایین بزن و مثلاً بنویس: «فردا ساعت ۹ صبح خرید نان».','پیش‌نمایش عنوان، تاریخ، ساعت و نوع ثبت را بخوان. برداشت برنامه را پیش از ثبت اصلاح کن.','برای هزینه بنویس «۲۵۰ هزار تومان بنزین». سپس «ثبت» را بزن؛ تاریخ مالی باید امروز یا گذشته باشد.'],['متن تو: فردا ساعت ۹ خرید نان','پیش‌نمایش: کار · فردا · ۰۹:۰۰','دکمهٔ ثبت']],
- ['timeline','clock','خط زمانی، صندوق و روال','روزت را تصویری ببین',['در ظاهر «دفتر خودنگار»، صفحهٔ «امروز» را از «فهرست» به «خط زمانی» ببر. در ظاهر «Structured»، خط زمانی از ابتدا باز است و روزهای هفته را همان‌جا انتخاب می‌کنی. کارهای ساعت‌دار، مدتشان و فاصله‌های خالی روز را می‌بینی.','کاری که هنوز تاریخش معلوم نیست را بدون تاریخ بنویس؛ به «صندوق» می‌رود. از کارت صندوق با «امروز» یا «فردا» آن را به یک روز بفرست.','در «کارها ← روال‌ها» چند کار پشت سر هم بساز (مثل روال صبح) و با دکمهٔ «روال» در صفحهٔ امروز، همه را یک‌جا با ساعت به روز اضافه کن.'],['فهرست ↔ خط زمانی','صندوق → امروز / فردا','روال صبح → ۴ کار با ساعت']],
- ['focus','timer','تایمر تمرکز','یک کار در هر لحظه',['کنار هر کار باز، نماد ساعت را بزن یا در فرم کار «تمرکز» را انتخاب کن.','۲۵ دقیقه فقط روی همان کار کار کن؛ بعد ۵ دقیقه استراحت. زمان‌ها در صفحهٔ «تمرکز» قابل تغییرند.','در پایان هر دوره اعلان می‌آید. آمار زمان تمرکز امروز و هفته در صفحهٔ «تمرکز» دیده می‌شود.'],['شروع تمرکز','۲۵:۰۰ ← ۰۰:۰۰','استراحت ۵ دقیقه']],
- ['lists','book','فهرست‌ها، دفترچه و چاپ','چیزهای کوچکی که می‌مانند',['«فهرست‌های من» در بخش‌ها: کتاب‌ها و فیلم‌هایی که می‌خواهی، در حالشان هستی یا تمام کرده‌ای؛ با امتیاز و یادداشت.','در صفحهٔ شرح حال، هر روز یک «پرسش امروز» هست؛ چند خط جواب بده تا دفترچه‌ات کامل شود.','با دکمهٔ «چاپ» در صفحهٔ امروز، برنامهٔ روز یا هفته را در اندازهٔ A4 چاپ کن یا به PDF ذخیره کن.'],['کتاب: در حال خواندن','پرسش امروز ✎','چاپ A4 / PDF']],
+ ['timeline','clock','خط زمانی، صندوق و روال','روزت را تصویری ببین',['در ظاهر «دفتر خودنگار»، صفحهٔ «امروز» را از «فهرست» به «خط زمانی» ببر. در ظاهر «ریتم»، خط زمانی از ابتدا باز است و روزهای هفته را همان‌جا انتخاب می‌کنی. کارهای ساعت‌دار، مدتشان و فاصله‌های خالی روز را می‌بینی.','کاری که هنوز تاریخش معلوم نیست را بدون تاریخ بنویس؛ به «صندوق» می‌رود. از کارت صندوق با «امروز» یا «فردا» آن را به یک روز بفرست.','در «کارها ← روال‌ها» چند کار پشت سر هم بساز (مثل روال صبح) و با دکمهٔ «روال» در صفحهٔ امروز، همه را یک‌جا با ساعت به روز اضافه کن.'],['فهرست ↔ خط زمانی','صندوق → امروز / فردا','روال صبح → ۴ کار با ساعت']],
+ ['focus','timer','تایمر تمرکز','یک کار در هر لحظه',['کنار هر کار انجام‌نشده، نماد ساعت را بزن یا در فرم کار «تمرکز» را انتخاب کن.','۲۵ دقیقه فقط روی همان کار کار کن؛ بعد ۵ دقیقه استراحت. زمان‌ها در صفحهٔ «تمرکز» قابل تغییرند.','در پایان هر دوره اعلان می‌آید. آمار زمان تمرکز امروز و هفته در صفحهٔ «تمرکز» دیده می‌شود.'],['شروع تمرکز','۲۵:۰۰ ← ۰۰:۰۰','استراحت ۵ دقیقه']],
+ ['lists','book','فهرست‌ها، دفترچه و چاپ','چیزهای کوچکی که می‌مانند',['«فهرست‌های من» در بخش‌ها: کتاب‌ها و فیلم‌هایی که می‌خواهی بخوانی یا ببینی، الان مشغولشان هستی یا تمامشان کرده‌ای؛ با امتیاز و یادداشت.','در صفحهٔ شرح حال، هر روز یک «پرسش امروز» هست؛ چند خط جواب بده تا دفترچه‌ات کامل شود.','با دکمهٔ «چاپ» در صفحهٔ امروز، برنامهٔ روز یا هفته را در اندازهٔ A4 چاپ کن یا به PDF ذخیره کن.'],['کتاب: در حال خواندن','پرسش امروز ✎','چاپ A4 / PDF']],
  ['calendar','calendar','تقویم و قرارها','برای روزهایت جا باز کن',['از بخش «تقویم»، روز دلخواه را انتخاب کن تا برنامهٔ همان روز را ببینی.','برای قرار، جلسه، تولد یا رویداد از کنترل افزودن رویداد استفاده کن. تاریخ و ساعت را بررسی کن.','تکرار و یادآوری را در فرم تنظیم کن. برای تغییر رویداد، آن را باز و ویرایش کن.'],['تقویم شمسی','روز انتخاب‌شده → برنامهٔ روز','قرار / تولد / جلسه']],
  ['goals','target','هدف‌ها و عادت‌ها','از هدف بزرگ تا قدم کوچک',['در «اهداف و عادت‌ها» هدفی با عنوان روشن و حوزهٔ زندگی بساز.','برای مسیر رسیدن به هدف، عادت و برنامهٔ تکرار تعیین کن. نسخهٔ کوچک عادت کمک می‌کند در روزهای سخت هم قدمی برداری.','انجام عادت‌ها را در فهرست روز ثبت کن و پیشرفت هدف را در بخش خودش مرور کن.'],['هدف من','عادت کوچک و تکرارشونده','امروز: یک قدم ✓']],
  ['work','briefcase','کار و پروژه‌ها','کارهای حرفه‌ای در یک جا',['بخش «کار» برای پروژه‌ها و برنامه‌های کاری است؛ اگر دیده نمی‌شود از تنظیمات بخش‌ها روشنش کن.','در فرم کار، بخش «کاری» را انتخاب و در صورت نیاز پروژه را مشخص کن.','در صفحهٔ امروز با انتخاب «کاری» فهرست کارهای حرفه‌ای را جداگانه مرور کن.'],['پروژه','کار با بخش «کاری»','امروز ← کاری']],
  ['finance','wallet','مالی و حساب‌ها','پول‌ها را دقیق ثبت کن',['در «مالی»، حساب‌ها و ماندهٔ شروع را بررسی کن؛ واحد نمایش ریال یا تومان از تنظیمات انتخاب می‌شود.','هزینه یا درآمد را با مبلغ، دسته، حساب و تاریخ ثبت کن. جابه‌جایی پول بین حساب‌ها را انتقال ثبت کن.','گزارش‌ها، بودجه‌ها، قبوض، بدهی‌ها و پس‌انداز را از بخش مالی مرور کن. برای اصلاح، ثبت مربوط را باز کن.'],['مبلغ + دسته','حساب + تاریخ','هزینه / درآمد / انتقال']],
  ['food','food','غذا و آب','ثبت وعده‌ها و نوشیدن آب',['در بخش «غذا و کالری»، غذای مصرف‌شده را برای وعده و مقدار مناسب ثبت کن.','خلاصهٔ انرژی و مواد مغذی بر پایهٔ غذاها و مقدارهای ثبت‌شده است؛ تنظیمات مشخصات و هدف را بررسی کن.','با کنترل آب، لیوان‌های نوشیده‌شده را اضافه یا اصلاح کن. برنامهٔ غذایی و فهرست خرید هم در همین بخش هستند.'],['صبحانه · ناهار · شام','غذا + مقدار → ثبت وعده','آب: + یک لیوان']],
  ['workout','workout','ورزش و تمرین','حرکت با ریتم خودت',['در «ورزش»، تمرین‌ها و برنامه‌های تمرینی را مرور کن یا برنامهٔ خودت را بساز.','جلسه را شروع کن و تمرین‌ها، ست‌ها و مقدار انجام را ثبت کن.','در پایان، جلسه را ذخیره کن تا در سابقه دیده شود. ثبت اندازه‌های بدن در همین بخش در دسترس است.'],['انتخاب برنامه','تمرین ← ست‌ها','پایان و ذخیرهٔ جلسه']],
- ['mood','mood','حال روحی و قدردانی','جایی برای احساس و اتفاق‌های خوب',['در «حال روحی»، یکی از چهره‌ها را بزن؛ این کار همان لحظه حال را ثبت می‌کند.','روی «جزئیات» یا ثبت ایجادشده در «ثبت‌های امروز» بزن. پایین فرم، «سه چیز که بابتش قدردانم» را بنویس و ذخیره کن.','تب «سابقه» برای باز کردن و ویرایش ثبت‌های قبلی است. کارت «از دفتر قدردانی» فقط آخرین نوشته را نشان می‌دهد و دفتر جداگانه نیست.'],['حال روحی → انتخاب چهره','ثبت‌های امروز → باز کردن ثبت','سه چیز که بابتش قدردانم ✎']],
+ ['mood','mood','حال روحی و قدردانی','جایی برای احساس و اتفاق‌های خوب',['در «حال روحی»، یکی از چهره‌ها را بزن تا فرم ثبت حال باز شود. با زدن «ذخیره»، حالت ثبت می‌شود.','پایین همان فرم، «سه چیز که بابتش قدردانم» را بنویس و ذخیره کن. برای کامل کردن ثبت‌های قبلی، روی هر ثبت در «ثبت‌های امروز» بزن.','تب «سابقه» برای باز کردن و ویرایش ثبت‌های قبلی است. کارت «از دفتر قدردانی» فقط آخرین نوشته را نشان می‌دهد و دفتر جداگانه نیست.'],['حال روحی → انتخاب چهره','ثبت‌های امروز → باز کردن ثبت','سه چیز که بابتش قدردانم ✎']],
  ['review','chart','مرور هفته','مکث برای نگاه دوباره',['از بخش‌ها یا منوی دسکتاپ وارد «مرور هفته» شو.','آمار هفته را ببین و پرسش‌های مرور را بر اساس تجربهٔ خودت پاسخ بده.','به‌جای کامل بودن، یک تغییر کوچک برای هفتهٔ بعد انتخاب کن. داده‌های ناقص، تصویر کاملی از هفته نمی‌سازند.'],['هفتهٔ گذشته','چه چیزی خوب پیش رفت؟','قدم بعدی من']],
- ['assistant','sparkle','دستیار هوشمند','پرسیدن، بررسی کردن، تأیید کردن',['«دستیار هوشمند» را از صفحهٔ اصلی یا بخش‌ها باز کن. پیشنهادهایی مثل «امروزم را خلاصه کن» در حالت محلی کار می‌کنند.','برای ثبت بنویس «ثبت کن فردا ساعت ۹ صبح خرید نان». جزئیات را ببین و «تأیید و ثبت» را بزن؛ امکان برگرداندن همان ثبت هم هست.','حالت محلی مدل زبانی نیست. حالت آنلاین به سرور و کلید API نیاز دارد؛ از تنظیمات دستیار فعال می‌شود و ارسال خلاصهٔ دفتر فقط با اجازهٔ توست.'],['پیام تو','پیش‌نمایش ثبت','تأیید و ثبت ↔ برگرداندن']],
- ['appearance','sun','رنگ و چیدمان','دفتر به سلیقهٔ تو',['در شروع برنامه یا تنظیمات ← رنگ و ظاهر، ظاهر «دفتر خودنگار» یا «Structured» و یکی از شش پالت را انتخاب کن؛ پیش‌نمایش ترکیب را همان‌جا می‌بینی.','حالت روشن، تیره یا خودکار، نمایش تصویرها و کاهش حرکت را به دلخواه تنظیم کن.','در تنظیمات ← بخش‌ها و صفحهٔ اصلی، بخش‌ها را روشن یا خاموش کن و ترتیب کارت‌ها را تغییر بده.'],['۶ پالت رنگی','روشن / تیره / خودکار','چیدمان کارت‌ها']],
+ ['assistant','sparkle','دستیار هوشمند','پرسیدن، بررسی کردن، تأیید کردن',['«دستیار هوشمند» را از صفحهٔ اصلی یا بخش‌ها باز کن. پیشنهادهایی مثل «امروزم را خلاصه کن» در حالت محلی کار می‌کنند.','برای ثبت بنویس «ثبت کن فردا ساعت ۹ صبح خرید نان». جزئیات را ببین و «تأیید و ثبت» را بزن؛ امکان برگرداندن همان ثبت هم هست.','حالت محلی مدل زبانی نیست. حالت آنلاین به یک «سرور واسط» نیاز دارد که هنوز راه‌اندازی نشده؛ بعد از راه‌اندازی، از تنظیمات دستیار فعال می‌شود و ارسال خلاصهٔ دفتر فقط با اجازهٔ توست.'],['پیام تو','پیش‌نمایش ثبت','تأیید و ثبت ↔ برگرداندن']],
+ ['appearance','sun','رنگ و چیدمان','دفتر به سلیقهٔ تو',['در شروع برنامه یا تنظیمات ← رنگ و ظاهر، ظاهر «دفتر خودنگار» یا «ریتم» و یکی از شش پالت را انتخاب کن؛ پیش‌نمایش ترکیب را همان‌جا می‌بینی.','حالت روشن، تیره یا خودکار، نمایش تصویرها و کاهش حرکت را به دلخواه تنظیم کن.','در تنظیمات ← بخش‌ها و صفحهٔ اصلی، بخش‌ها را روشن یا خاموش کن و ترتیب کارت‌ها را تغییر بده.'],['۶ پالت رنگی','روشن / تیره / خودکار','چیدمان کارت‌ها']],
  ['notifications','bell','یادآوری‌ها','یادآوری با تنظیم درست',['در تنظیمات ← اعلان‌ها و یادآوری‌ها، ساعت‌ها و موارد دلخواه را تنظیم کن.','در فرم کار یا رویداد، زمان و فاصلهٔ یادآوری را بررسی کن. برای اعلان سیستم، مرورگر باید اجازه داشته باشد.','در نسخهٔ HTML، بررسی یادآوری‌ها هنگام باز بودن برنامه انجام می‌شود؛ با بسته بودن صفحه روی هشدار قطعی حساب نکن.'],['انتخاب موارد','زمان و اجازهٔ مرورگر','برنامه باز → بررسی یادآوری']],
  ['backup','download','پشتیبان و انتقال داده','از نوشته‌هایت یک نسخه داشته باش',['در تنظیمات ← پشتیبان‌گیری و بازگردانی، خروجی بگیر و فایل را در جای مطمئن نگه دار. امکان خروجی رمزدار هم وجود دارد.','قبل از تغییر مرورگر، دستگاه یا فایل برنامه پشتیبان بگیر. داده‌ها خودکار بین دستگاه‌ها همگام نمی‌شوند.','برای انتقال، فایل پشتیبان را در نسخهٔ مقصد وارد کن. بازگردانی داده‌های فعلی مقصد را جایگزین می‌کند؛ پشتیبان خودکار داخل مرورگر جای فایل جداگانه را نمی‌گیرد.'],['دفتر این دستگاه','خروجی پشتیبان → فایل شخصی','ورود فایل در مقصد']],
  ['privacy','lock','حریم خصوصی و شروع استفاده','آمادهٔ نوشتن هستی',['قفل ورود و پنهان کردن مبالغ در تنظیمات قرار دارند. پنهان کردن مبلغ، رمزگذاری اطلاعات نیست.','گفت‌وگوهای همراه داخل پشتیبان هم قرار می‌گیرند. قبل از دادن فایل پشتیبان به دیگران، محتوایش را در نظر بگیر.','این راهنما همیشه در تنظیمات ← راهنمای تصویری برنامه در دسترس است. هر فصل را جداگانه یا از ابتدا مرور کن.'],['قفل ورود','پنهان کردن مبالغ','تنظیمات → راهنمای تصویری']]
@@ -6380,7 +6433,7 @@ window.addEventListener('resize', () => { clearTimeout(fitNums._t); fitNums._t =
 /* ================= Daily sentence ================= */
 const QUOTES = [
   "لازم نیست امروز همه‌چیز را درست کنی؛ فقط یک قدم کوچک بردار.",
-  "آرام رفتن هم رفتن است؛ مهم این است که بایستی نه.",
+  "آرام رفتن هم رفتن است؛ مهم این است که نایستی.",
   "کار کوچکی که انجام شده، از نقشهٔ بزرگی که در ذهن مانده بهتر است.",
   "امروز را با یک کار ساده شروع کن تا ذهنت گرم شود.",
   "هر روز کمی بهتر از دیروز، یعنی یک سال بعد آدم دیگری هستی.",
@@ -6398,7 +6451,7 @@ const QUOTES = [
   "سخت‌ترین قسمت هر کار، همان شروعش است.",
   "امروز یک چیز را از فهرستت خط بزن و به خودت آفرین بگو.",
   "لازم نیست حالت عالی باشد تا شروع کنی؛ شروع کن تا حالت بهتر شود.",
-  "پول‌ات را بنویس تا بدانی کجا می‌رود.",
+  "پولت را بنویس تا بدانی کجا می‌رود.",
   "یک لیوان آب، یک نفس عمیق، یک قدم بعدی.",
   "امروز را دست‌کم نگیر؛ همین روزهای معمولی زندگی را می‌سازند.",
   "وقتی برنامه داری، روز تو را نمی‌برد؛ تو روز را می‌بری.",
@@ -6479,7 +6532,7 @@ const QUOTES = [
   "وقتی کاری را می‌پذیری، تمامش کن؛ وقتی نمی‌توانی، صادقانه بگو.",
   "بهترین زمان برای شروع، دیروز بود؛ زمان بعدی، همین حالاست.",
   "یک کار نیمه‌تمام را امروز به پایان برسان.",
-  "مرتب کردن یک گوشهٔ کوچک، حس مرتب بودن بزرگی می‌دهد.",
+  "مرتب کردن یک گوشهٔ کوچک هم حس نظم و آرامش خوبی می‌دهد.",
   "شادی را در چیزهای کوچک پیدا کن: یک چای گرم، یک آسمان صاف.",
   "برای هر چیز جایی، و هر چیز در جای خودش.",
   "امروز را با نوشتن سه کار اصلی شروع کن.",
@@ -6489,7 +6542,7 @@ const QUOTES = [
   "یک ساعت بدون گوشی، هدیه‌ای به ذهن خودت است.",
   "آدم‌های موفق هم روزهای بد دارند؛ فقط فردایش دوباره شروع می‌کنند.",
   "بگذار کارهایت حرف بزنند، نه نگرانی‌هایت.",
-  "کمی جلوتر از ترس‌ات قدم بردار.",
+  "کمی جلوتر از ترست قدم بردار.",
   "امروز چیزی را تمام کن که مدت‌هاست عقب انداخته‌ای.",
   "آرامش را در برنامه‌ات جا بده، نه در حاشیه‌اش.",
   "پول خوب خرج‌شده، آرامش می‌خرد.",
@@ -6775,15 +6828,15 @@ const Account = (() => {
     return `<div class="reg-grid">${f('first', 'نام', a.first, 'text', 'مثلاً علی', 'autocomplete="given-name"')}${f('last', 'نام خانوادگی', a.last, 'text', 'مثلاً رضایی', 'autocomplete="family-name"')}</div>
       ${f('mobile', 'شمارهٔ موبایل', a.mobile, 'tel', '۰۹۱۲۳۴۵۶۷۸۹', 'inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right"')}
       ${f('email', 'ایمیل', a.email, 'email', 'name@example.com', 'inputmode="email" autocomplete="email" dir="ltr" style="text-align:right"')}
-      <p class="small muted">${icon('lock', 13)} این اطلاعات برای پشتیبانی و فعال‌سازی برنامه به سایت بنیان سافت فرستاده می‌شود و در اختیار شخص دیگری قرار نمی‌گیرد.</p>`;
+      <p class="small muted">${icon('lock', 13)} ${REG_URL ? 'این اطلاعات برای پشتیبانی و فعال‌سازی برنامه به سایت بنیان سافت فرستاده می‌شود و در اختیار شخص دیگری قرار نمی‌گیرد.' : 'این اطلاعات فعلاً فقط روی همین گوشی نگه داشته می‌شود. در نسخه‌های بعدی، برای پشتیبانی و فعال‌سازی به سایت بنیان سافت فرستاده می‌شود و در اختیار شخص دیگری قرار نمی‌گیرد.'}</p>`;
   }
   /* read + validate; marks bad fields; returns the data or null */
   function readForm(box) {
     const g = (id) => (box.querySelector('#reg_' + id) || {}).value || '';
     const v = { first: g('first').trim(), last: g('last').trim(), mobile: normMobile(g('mobile')), email: g('email').trim().toLowerCase() };
     const bad = [];
-    if (!v.first) bad.push(['first', 'نام را بنویسید']);
-    if (!v.last) bad.push(['last', 'نام خانوادگی را بنویسید']);
+    if (!v.first) bad.push(['first', 'نام را بنویس']);
+    if (!v.last) bad.push(['last', 'نام خانوادگی را بنویس']);
     if (!okMobile(v.mobile)) bad.push(['mobile', 'شمارهٔ موبایل درست نیست (مثل ۰۹۱۲۳۴۵۶۷۸۹)']);
     if (!okEmail(v.email)) bad.push(['email', 'ایمیل درست نیست']);
     box.querySelectorAll('[data-rf]').forEach((x) => x.classList.toggle('bad', bad.some((b) => b[0] === x.dataset.rf)));
@@ -6820,7 +6873,7 @@ const Account = (() => {
     const a = acc();
     if (!a.first && S.settings.name) a.first = S.settings.name;
     const el = document.createElement('div'); el.className = 'onb acc';
-    el.innerHTML = `<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><h1>ثبت‌نام</h1><p class="lead">برای ادامه، یک بار مشخصات خود را وارد کنید. داده‌های برنامه همچنان روی همین گوشی می‌ماند.</p><div class="stack" data-reg>${fieldsHtml(a)}</div><button class="btn primary block" data-go>ثبت و ادامه</button></div>`;
+    el.innerHTML = `<div class="onb-in"><div class="brand"><div class="brand-mark">خ</div><b style="font-size:20px">خودنگار</b></div><h1>ثبت‌نام</h1><p class="lead">برای ادامه، یک بار مشخصاتت را وارد کن. داده‌های برنامه همچنان روی همین گوشی می‌ماند.</p><div class="stack" data-reg>${fieldsHtml(a)}</div><button class="btn primary block" data-go>ثبت و ادامه</button></div>`;
     document.body.appendChild(el);
     el.querySelector('[data-go]').onclick = () => { const v = readForm(el.querySelector('[data-reg]')); if (!v) return; store(v); el.remove(); App.refresh(); App.toast('ثبت‌نام انجام شد، ' + v.first); };
   }
@@ -6913,7 +6966,7 @@ const TaskX = (() => {
         if (sel) { if (![...sel.options].some((o) => o.value === String(r.dur))) { const o = document.createElement('option'); o.value = String(r.dur); o.textContent = durLabel(r.dur); sel.appendChild(o); } sel.value = String(r.dur); bits.push(durLabel(r.dur)); }
       }
       title.value = r.title; suggest();
-      if (bits.length) App.toast('از متن برداشته شد: ' + bits.join('، '));
+      if (bits.length) App.toast('از متن تشخیص داده شد: ' + bits.join('، ') + '؛ در فرم قرار گرفت و از عنوان حذف شد.');
     });
     setTimeout(suggest, 50);
   }
@@ -6934,8 +6987,8 @@ const TaskX = (() => {
     const today = J.today();
     return UI.sec(`${icon('inbox', 18)} صندوق <small class="num muted">${U.fa(xs.length)}</small>`, `<div class="list inbox-list">${xs.slice(0, 3).map((t) => row(t, today)).join('')}</div>${xs.length > 3 ? `<button class="link" data-a="inbox.open">دیدن همهٔ ${U.fa(xs.length)} مورد ←</button>` : ''}`, `<button class="link" data-a="inbox.open">همه</button>`);
   }
-  App.act('inbox.when', (d) => { const t = S.tasks.find((x) => x.id === d.id); if (!t) return; t.date = J.addDays(J.today(), +d.w || 0); DB.save('tasks'); App.refresh(); App.toast('«' + t.title + '» برای ' + J.rel(t.date) + ' شد'); });
-  App.act('inbox.pick', async (d) => { const t = S.tasks.find((x) => x.id === d.id); if (!t) return; const v = await UI.pickDate(J.today(), { allowEmpty: false, title: 'کی انجامش می‌دهی؟' }); if (!v) return; t.date = v; DB.save('tasks'); App.refresh(); App.toast('«' + t.title + '» برای ' + J.rel(v) + ' شد'); });
+  App.act('inbox.when', (d) => { const t = S.tasks.find((x) => x.id === d.id); if (!t) return; t.date = J.addDays(J.today(), +d.w || 0); DB.save('tasks'); App.refresh(); App.toast('«' + t.title + '» به برنامهٔ ' + J.rel(t.date) + ' منتقل شد'); });
+  App.act('inbox.pick', async (d) => { const t = S.tasks.find((x) => x.id === d.id); if (!t) return; const v = await UI.pickDate(J.today(), { allowEmpty: false, title: 'کی انجامش می‌دهی؟' }); if (!v) return; t.date = v; DB.save('tasks'); App.refresh(); App.toast('«' + t.title + '» به برنامهٔ ' + J.rel(v) + ' منتقل شد'); });
   App.act('inbox.open', () => { App.go('tasks'); App.acts['tasks.view']({ v: 'nodate' }); });
   return { durLabel, durOpts, DUR, guessIcon, lookHtml, readLook, wireLook, inboxHtml, inboxCard, inboxItems, ICON_LIST };
 })();
@@ -6944,9 +6997,19 @@ const TaskX = (() => {
 const Timeline = (() => {
   const PX = 1.15; /* pixels per minute */
   const hm = (s) => U.hmToMin(s);
+  /* v0.4.1: with the calendar section off, only work meetings (work section on) are shown */
+  const evScope = (e) => e.scope || (e.kind === 'meeting' ? 'work' : 'personal');
+  const evShown = (e) => App.on('calendar') || (App.on('work') && evScope(e) === 'work');
+  function allDay(iso, scope) {
+    if (!(App.on('calendar') || App.on('work'))) return [];
+    return S.events.filter((e) => (e.allDay || !e.time) && e.kind !== 'birthday' && e.kind !== 'anniversary' && evShown(e) && Calendar.occursOn(e, iso) && (!scope || evScope(e) === scope)).map((e) => {
+      const [label, ic, col] = Calendar.KINDS[e.kind] || Calendar.KINDS.event;
+      return { key: 'sev:' + e.id, mod: 'calendar', ref: e.id, title: e.title, event: true, allDay: true, scope: evScope(e), tIcon: ic, color: col, src: label, open: { a: 'calendar.edit', data: { id: e.id } } };
+    });
+  }
   function events(iso, scope) {
     if (!(App.on('calendar') || App.on('work'))) return [];
-    return S.events.filter((e) => !e.allDay && e.time && e.kind !== 'birthday' && e.kind !== 'anniversary' && Calendar.occursOn(e, iso) && (!scope || (e.scope || (e.kind === 'meeting' ? 'work' : 'personal')) === scope)).map((e) => {
+    return S.events.filter((e) => !e.allDay && e.time && e.kind !== 'birthday' && e.kind !== 'anniversary' && evShown(e) && Calendar.occursOn(e, iso) && (!scope || evScope(e) === scope)).map((e) => {
       const [label, ic, col] = Calendar.KINDS[e.kind] || Calendar.KINDS.event;
       const dur = e.endTime ? Math.max(15, hm(e.endTime) - hm(e.time)) : 60;
       return { key: 'tev:' + e.id, mod: 'calendar', ref: e.id, title: e.title, time: e.time, dur, color: col, tIcon: ic, src: label, event: true, open: { a: 'calendar.edit', data: { id: e.id } } };
@@ -6961,7 +7024,7 @@ const Timeline = (() => {
     clusters.forEach((c) => { const lanes = []; c.forEach((b) => { let k = lanes.findIndex((e) => e <= b.s); if (k < 0) { k = lanes.length; lanes.push(0); } lanes[k] = b.e; b.lane = k; }); c.forEach((b) => { b.lanes = lanes.length; }); });
     return { xs, clusters };
   }
-  const range = (s, e) => U.fa(U.minToHM(s)) + ' تا ' + U.fa(U.minToHM(Math.min(e, 24 * 60 - 1)));
+  const range = (s, e) => U.fa(U.minToHM(s)) + ' تا ' + knEnd(e);
   function blockHtml(b, iso, top) {
     const it = b.it, h = Math.max((b.e - b.s) * PX, 38), w = 100 / b.lanes, short = h < 54;
     const open = it.open ? `data-a="${it.open.a}" ${Object.entries(it.open.data || {}).map(([k, v]) => `data-${k}="${U.esc(v)}"`).join(' ')}` : '';
@@ -6996,7 +7059,7 @@ const Timeline = (() => {
     return out + `<div class="tl" style="height:${H + 8}px" aria-label="خط زمانی ${J.fmt(iso, 'full')}">${grid}<div class="tl-lane">${gaps}${body}${now}</div></div>`
       + (openUntimed ? `<button class="btn ghost block tl-plan" data-a="dayplan.open" data-d="${iso}">${icon('sparkle', 17)} چیدن خودکار ${U.fa(openUntimed)} کار بدون ساعت در جاهای خالی</button>` : '');
   }
-  return { html, events, blocks };
+  return { html, events, blocks, allDay };
 })();
 
 /* ================= Day plan: draft first, then confirm (پیش‌نویس برای تأیید) ================= */
@@ -7099,9 +7162,10 @@ const Routines = (() => {
   }
   function addTo(r, date, start) {
     let m = U.hmToMin(start || r.start || '08:00');
-    const made = r.items.map((x) => { const t = { id: U.uid(), title: x.title, scope: 'personal', date, time: U.minToHM(Math.min(m, 23 * 60 + 59)), dur: +x.dur || 15, priority: 0, rec: null, subtasks: [], note: '', done: false, created: Date.now(), reminder: null, icon: TaskX.guessIcon(x.title), routineId: r.id }; m += +x.dur || 15; return t; });
+    let crossed = false; /* v0.4.1: items after midnight continue on the next day */
+    const made = r.items.map((x) => { const off = Math.floor(m / 1440); if (off > 0) crossed = true; const t = { id: U.uid(), title: x.title, scope: 'personal', date: off ? J.addDays(date, off) : date, time: U.minToHM(m % 1440), dur: +x.dur || 15, priority: 0, rec: null, subtasks: [], note: '', done: false, created: Date.now(), reminder: null, icon: TaskX.guessIcon(x.title), routineId: r.id }; m += +x.dur || 15; return t; });
     S.tasks.push(...made); DB.save('tasks'); App.refresh();
-    App.toast(`${U.fa(made.length)} کار از «${r.title}» به ${J.rel(date)} اضافه شد`, { label: 'برگرداندن', run: () => { const ids = made.map((t) => t.id); S.tasks = S.tasks.filter((t) => !ids.includes(t.id)); DB.save('tasks'); App.refresh(); } });
+    App.toast(`${U.fa(made.length)} کار از «${r.title}» به ${J.rel(date)} اضافه شد${crossed ? '؛ کارهای بعد از نیمه‌شب در روز بعد ثبت شدند' : ''}`, { label: 'برگرداندن', run: () => { const ids = made.map((t) => t.id); S.tasks = S.tasks.filter((t) => !ids.includes(t.id)); DB.save('tasks'); App.refresh(); } });
   }
   async function apply(d) {
     seed();
@@ -7215,7 +7279,7 @@ const Focus = (() => {
       const today = J.today();
       const open = Tasks.forDay(today).filter((x) => !x.done && (App.on('work') || x.t.scope !== 'work')).map((x) => x.t);
       body += `<section class="focus-box idle"><h2>روی چه کاری تمرکز کنیم؟</h2><p class="muted">${U.fa(S.settings.focusMin || 25)} دقیقه فقط یک کار، بعد ${U.fa(S.settings.breakMin || 5)} دقیقه استراحت. در پایان هر دوره اعلان می‌آید.</p></section>`;
-      body += UI.sec('کارهای باز امروز', open.length ? `<div class="list">${open.map((t) => `<button class="li" data-a="focus.start" data-id="${t.id}" style="--c:${t.color || 'var(--c-tasks)'}"><span class="li-ic">${icon(t.icon || 'timer')}</span><div class="li-t"><b>${U.esc(t.title)}</b>${t.time ? `<small><span>${icon('clock', 12)} ${U.fa(t.time)}</span></small>` : ''}</div><span class="btn sm mod">شروع</span></button>`).join('')}</div>` : UI.empty('timer', 'کار بازی برای امروز نیست.', `<button class="btn primary" data-a="tasks.new">${icon('plus', 18)} کار جدید</button>`));
+      body += UI.sec('کارهای انجام‌نشدهٔ امروز', open.length ? `<div class="list">${open.map((t) => `<button class="li" data-a="focus.start" data-id="${t.id}" style="--c:${t.color || 'var(--c-tasks)'}"><span class="li-ic">${icon(t.icon || 'timer')}</span><div class="li-t"><b>${U.esc(t.title)}</b>${t.time ? `<small><span>${icon('clock', 12)} ${U.fa(t.time)}</span></small>` : ''}</div><span class="btn sm mod">شروع</span></button>`).join('')}</div>` : UI.empty('timer', 'کار انجام‌نشده‌ای برای امروز نیست.', `<button class="btn primary" data-a="tasks.new">${icon('plus', 18)} کار جدید</button>`));
     }
     body += UI.sec('زمان‌ها', `<div class="card stack"><div class="row" style="flex-wrap:wrap;gap:8px"><b class="small">تمرکز:</b>${[15, 25, 30, 45, 50, 60].map((m) => `<button class="chip ${(+S.settings.focusMin || 25) === m ? 'on' : ''}" data-a="focus.set" data-k="focusMin" data-v="${m}">${U.fa(m)} دقیقه</button>`).join('')}</div><div class="row" style="flex-wrap:wrap;gap:8px"><b class="small">استراحت:</b>${[3, 5, 10, 15].map((m) => `<button class="chip ${(+S.settings.breakMin || 5) === m ? 'on' : ''}" data-a="focus.set" data-k="breakMin" data-v="${m}">${U.fa(m)} دقیقه</button>`).join('')}</div><p class="small muted">تغییر زمان‌ها از دور بعدی اعمال می‌شود.${Platform.isNative ? '' : ' در نسخهٔ وب و آیفون، اعلان پایان دوره فقط وقتی برنامه باز است می‌آید.'}</p></div>`);
     body += UI.sec('آمار تمرکز', `<div class="grid2"><div class="stat card"><small>امروز</small><b>${TaskX.durLabel(st.today) || '۰ دقیقه'}</b></div><div class="stat card"><small>هفت روز اخیر</small><b>${TaskX.durLabel(st.week) || '۰ دقیقه'}</b></div></div><div class="card">${Charts.bars(st.days, { h: 110, fmt: (v) => (v ? TaskX.durLabel(v) : '—') })}</div>`);
@@ -7279,9 +7343,9 @@ const Board = (() => {
 /* ================= Journal prompts (پرسش امروز دفترچه) ================= */
 const Journal = (() => {
   const Q = [
-    'امروز چه چیزی تو را خنداند؟', 'امروز از چه کاری به خودت افتخار می‌کنی؟', 'چه چیزی امروز ذهنت را مشغول کرده بود؟', 'اگر امروز را دوباره زندگی می‌کردی، چه چیزی را عوض می‌کردی؟',
+    'امروز چه چیزی تو را خنداند؟', 'امروز به کدام کارت افتخار می‌کنی؟', 'چه چیزی امروز ذهنت را مشغول کرده بود؟', 'اگر امروز را دوباره زندگی می‌کردی، چه چیزی را عوض می‌کردی؟',
     'امروز چه چیز تازه‌ای یاد گرفتی؟', 'چه کسی امروز روزت را بهتر کرد؟', 'امروز کدام لحظه برایت آرام‌ترین بود؟', 'چه کاری را مدت‌هاست عقب انداخته‌ای و چرا؟',
-    'فردا چه چیزی را می‌خواهی متفاوت انجام دهی؟', 'امروز با بدنت چطور رفتار کردی؟', 'یک چیز کوچک که امروز حالت را خوب کرد چه بود؟', 'از چه چیزی می‌ترسی که اگر نبود، الان انجامش می‌دادی؟',
+    'فردا چه چیزی را می‌خواهی متفاوت انجام دهی؟', 'امروز با بدنت چطور رفتار کردی؟', 'یک چیز کوچک که امروز حالت را خوب کرد چه بود؟', 'اگر نمی‌ترسیدی، امروز چه کاری را شروع می‌کردی؟',
     'این هفته برای چه کسی می‌خواهی وقت بگذاری؟', 'امروز کجا انرژی‌ات بیشتر بود و کجا کمتر؟', 'چه چیزی را امروز می‌توانی رها کنی؟', 'سه کلمه که امروزت را توصیف می‌کند چیست؟',
     'اگر بهترین دوستت جای تو بود، امروز به او چه می‌گفتی؟', 'چه عادتی امروز به کمکت آمد؟', 'امروز چه تصمیمی گرفتی که از آن راضی هستی؟', 'چه چیزی امروز بیشتر از انتظارت وقت گرفت؟',
     'یک خاطرهٔ خوب از این ماه بنویس.', 'برای یک سال بعدِ خودت چه پیامی داری؟', 'امروز کجا مهربان بودی؟', 'امروز چه چیزی تو را خسته کرد و چه چیزی سرحالت آورد؟',
@@ -7384,14 +7448,14 @@ const Cycle = (() => {
     const ov = st.len - 14;
     const inPeriod = st.last.end ? iso <= st.last.end : day <= st.plen;
     const key = inPeriod ? 'winter' : day < ov - 1 ? 'spring' : day <= ov + 1 ? 'summer' : 'autumn';
-    const next = J.addDays(st.last.start, st.len * Math.max(1, Math.ceil(day / st.len)));
+    const next = J.addDays(st.last.start, st.len); /* v0.4.1: no jump to the cycle after next while the period is late */
     return { st, day, key, s: SEASONS[key], next, until: J.diff(next, iso), late: day > st.len + 3, ongoing: !st.last.end && day <= 10 };
   }
   function homeCard() {
     if (!S.settings.cycleOn) return '';
     const c = today();
     if (c.none) return `<button class="card cycle-card" data-a="nav.go" data-s="cycle"><b>${icon('heart', 16)} چرخهٔ ماهانه</b><p class="small muted">شروع آخرین دوره را ثبت کن تا فصل امروز و پیش‌بینی دورهٔ بعد را ببینی.</p></button>`;
-    return `<button class="card cycle-card" data-a="nav.go" data-s="cycle" style="--cc:${c.s.color}"><b>${icon('heart', 16)} ${c.s.name} · روز ${U.fa(c.day)}</b><p class="small">${U.esc(c.s.tip)}</p><p class="small muted">${c.late ? 'دوره چند روز دیرتر از میانگین است.' : 'دورهٔ بعد حدود ' + (c.until <= 0 ? 'امروز' : U.fa(c.until) + ' روز دیگر')}</p></button>`;
+    return `<button class="card cycle-card" data-a="nav.go" data-s="cycle" style="--cc:${c.s.color}"><b>${icon('heart', 16)} ${c.s.name} · روز ${U.fa(c.day)}</b><p class="small">${U.esc(c.s.tip)}</p><p class="small muted">${c.late ? 'دوره ' + U.fa(c.day - c.st.len) + ' روز دیرتر از میانگین است؛ اگر شروع شده، ثبتش کن.' : c.until < 0 ? 'دورهٔ بعد احتمالاً همین روزهاست؛ وقتی شروع شد، ثبتش کن.' : 'دورهٔ بعد حدود ' + (c.until === 0 ? 'امروز' : U.fa(c.until) + ' روز دیگر')}</p></button>`;
   }
   function screen() {
     const c = today(), xs = sorted().reverse();
@@ -7402,7 +7466,7 @@ const Cycle = (() => {
       body += `<section class="card cycle-hero" style="--cc:${c.s.color}"><span class="pill" style="background:${c.s.color};color:#fff">${c.s.name}</span><h2>روز ${U.fa(c.day)} از حدود ${U.fa(c.st.len)}</h2><p class="muted small">${c.s.phase}</p><p>${U.esc(c.s.tip)}</p>
         <div class="cycle-bar" aria-hidden="true">${Array.from({ length: c.st.len }, (_, i) => { const d = i + 1, ov = c.st.len - 14; const k = d <= c.st.plen ? 'winter' : d < ov - 1 ? 'spring' : d <= ov + 1 ? 'summer' : 'autumn'; return `<i class="${d === Math.min(c.day, c.st.len) ? 'now' : ''}" style="background:${SEASONS[k].color}"></i>`; }).join('')}</div>
         <div class="row small" style="flex-wrap:wrap;gap:10px">${seasons.map((k) => `<span><i class="dot" style="background:${SEASONS[k].color}"></i> ${SEASONS[k].name}</span>`).join('')}</div>
-        <p class="small">${c.late ? `<b class="danger-t">${U.fa(c.day - c.st.len)} روز دیرتر از میانگین.</b> ` : ''}دورهٔ بعد (پیش‌بینی): <b>${J.fmt(c.next, 'wd')}</b>${c.until > 0 ? ` · ${U.fa(c.until)} روز دیگر` : ''}</p>
+        <p class="small">${c.late ? `<b class="danger-t">${U.fa(c.day - c.st.len)} روز دیرتر از میانگین.</b> ` : ''}دورهٔ بعد (پیش‌بینی): <b>${J.fmt(c.next, 'wd')}</b>${c.until > 0 ? ` · ${U.fa(c.until)} روز دیگر` : c.until < 0 && !c.late ? ` · ${U.fa(-c.until)} روز گذشته؛ وقتی شروع شد، ثبتش کن` : ''}</p>
         <div class="row" style="flex-wrap:wrap;gap:8px">${c.ongoing ? `<button class="btn primary" data-a="cycle.end" data-d="${J.today()}">پایان قاعدگی: امروز</button>` : `<button class="btn primary" data-a="cycle.start" data-d="${J.today()}">شروع قاعدگی: امروز</button>`}<button class="btn ghost" data-a="cycle.pick">ثبت تاریخ دیگر</button></div></section>`;
     }
     body += UI.sec('میانگین‌ها', `<div class="grid2"><div class="stat card"><small>طول چرخه</small><b>${U.fa(c.st.len)} روز</b></div><div class="stat card"><small>روزهای قاعدگی</small><b>${U.fa(c.st.plen)} روز</b></div></div><p class="small muted">${c.st.measured ? 'از ' + U.fa(c.st.measured) + ' چرخهٔ ثبت‌شده حساب شده.' : 'هنوز دادهٔ کافی نیست؛ از عددهای پیش‌فرض استفاده می‌شود.'} <button class="link small" data-a="cycle.defaults">تغییر پیش‌فرض‌ها</button></p>`);
@@ -7428,11 +7492,11 @@ const Print = (() => {
   function fontCss() { let css = ''; document.querySelectorAll('style').forEach((s) => { const m = s.textContent.match(/@font-face\s*{[^}]*}/g); if (m) css += m.join('\n'); }); return css; }
   function dayItems(iso) {
     const ag = App.agenda(iso);
-    const ev = Timeline.events(iso, null);
+    const ev = Timeline.events(iso, null).concat(Timeline.allDay(iso, null)); /* v0.4.1: all-day events too */
     const all = ag.concat(ev);
     return all.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   }
-  function rowHtml(i) { const s = i.time ? U.hmToMin(i.time) : null; return `<tr><td class="t">${i.time ? U.fa(i.time) + (i.dur ? '<br><small>تا ' + U.fa(U.minToHM(Math.min(s + i.dur, 1439))) + '</small>' : '') : '—'}</td><td>${esc(i.title)}${i.src && i.mod !== 'tasks' ? ` <small>(${esc(i.src)})</small>` : ''}</td><td class="d">${i.dur ? TaskX.durLabel(i.dur) : ''}</td><td class="b"><span class="box">${i.done ? '✓' : ''}</span></td></tr>`; }
+  function rowHtml(i) { const s = i.time ? U.hmToMin(i.time) : null; return `<tr><td class="t">${i.time ? U.fa(i.time) + (i.dur ? '<br><small>تا ' + knEnd(s + i.dur) + '</small>' : '') : (i.allDay ? '<small>تمام روز</small>' : '—')}</td><td>${esc(i.title)}${i.src && i.mod !== 'tasks' ? ` <small>(${esc(i.src)})</small>` : ''}</td><td class="d">${i.dur ? TaskX.durLabel(i.dur) : ''}</td><td class="b"><span class="box">${i.done ? '✓' : ''}</span></td></tr>`; }
   function dayHtml(iso) {
     const hol = Holidays.get(iso);
     const xs = dayItems(iso);
@@ -7447,7 +7511,7 @@ const Print = (() => {
     const ws = J.weekStart(iso);
     const days = Array.from({ length: 7 }, (_, i) => J.addDays(ws, i));
     return `<section class="page"><header><div><h1>هفتهٔ ${J.fmt(ws, 'short')} تا ${J.fmt(days[6], 'short')}</h1></div><div class="brand">خودنگار</div></header>
-      <div class="week">${days.map((d) => { const xs = dayItems(d).slice(0, 12); const hol = Holidays.get(d); return `<div class="wd ${hol.length || J.wd(d) === 6 ? 'off' : ''}"><h3>${J.fmt(d, 'wd')}</h3>${hol.length ? `<p class="hol">${esc(hol[0].title)}</p>` : ''}<ul>${xs.map((i) => `<li><span class="box">${i.done ? '✓' : ''}</span>${i.time ? `<b>${U.fa(i.time)}</b> ` : ''}${esc(i.title)}</li>`).join('')}${Array.from({ length: Math.max(0, 4 - xs.length) }, () => '<li class="blank"><span class="box"></span></li>').join('')}</ul></div>`; }).join('')}<div class="wd notes"><h3>یادداشت هفته</h3><div class="lines"><i></i><i></i><i></i><i></i><i></i></div></div></div>
+      <div class="week">${days.map((d) => { const xs = dayItems(d); /* v0.4.1: every item, nothing dropped */ const hol = Holidays.get(d); return `<div class="wd ${hol.length || J.wd(d) === 6 ? 'off' : ''}"><h3>${J.fmt(d, 'wd')}</h3>${hol.length ? `<p class="hol">${esc(hol[0].title)}</p>` : ''}<ul>${xs.map((i) => `<li><span class="box">${i.done ? '✓' : ''}</span>${i.time ? `<b>${U.fa(i.time)}</b> ` : ''}${esc(i.title)}</li>`).join('')}${Array.from({ length: Math.max(0, 4 - xs.length) }, () => '<li class="blank"><span class="box"></span></li>').join('')}</ul></div>`; }).join('')}<div class="wd notes"><h3>یادداشت هفته</h3><div class="lines"><i></i><i></i><i></i><i></i><i></i></div></div></div>
       <footer>چاپ از خودنگار · ${J.fmt(J.today(), 'short')}</footer></section>`;
   }
   function doc(title, inner) {
@@ -7469,14 +7533,14 @@ footer{margin-top:10px;color:#9aa293;font-size:10px;text-align:center}.tools{pos
     const go = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { App.toast('چاپ در این صفحه ممکن نیست'); } setTimeout(() => fr.remove(), 60000); };
     try { (d.fonts && d.fonts.ready ? d.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 150)); } catch (e) { setTimeout(go, 400); }
   }
-  async function open() {
-    const v = await UI.menu('چاپ برنامه (A4 یا PDF)', [{ label: 'برنامهٔ امروز', value: 'day', icon: 'sun' }, { label: 'برنامهٔ فردا', value: 'tomorrow', icon: 'calendar' }, { label: 'برنامهٔ این هفته', value: 'week', icon: 'grid' }]);
+  async function open(base) {
+    const today = J.today(); base = base || today; const isT = base === today, next = J.addDays(base, 1);
+    const v = await UI.menu('چاپ برنامه (A4 یا PDF)', [{ label: isT ? 'برنامهٔ امروز' : 'برنامهٔ ' + J.fmt(base, 'wd'), value: 'day', icon: 'sun' }, { label: isT ? 'برنامهٔ فردا' : 'برنامهٔ ' + J.fmt(next, 'wd'), value: 'tomorrow', icon: 'calendar' }, { label: isT ? 'برنامهٔ این هفته' : 'برنامهٔ هفتهٔ همین روز', value: 'week', icon: 'grid' }]);
     if (!v) return;
-    const today = J.today();
-    if (v === 'week') out('khodnegar-week-' + J.weekStart(today), doc('برنامهٔ هفته', weekHtml(today)));
-    else { const d = v === 'day' ? today : J.addDays(today, 1); out('khodnegar-day-' + d, doc('برنامهٔ ' + J.fmt(d, 'short'), dayHtml(d))); }
+    if (v === 'week') out('khodnegar-week-' + J.weekStart(base), doc('برنامهٔ هفته', weekHtml(base)));
+    else { const d = v === 'day' ? base : next; out('khodnegar-day-' + d, doc('برنامهٔ ' + J.fmt(d, 'short'), dayHtml(d))); }
   }
-  App.act('print.open', () => open());
+  App.act('print.open', (d) => open(d && d.d));
   return { open, dayHtml, weekHtml, doc, out };
 })();
 
@@ -7499,10 +7563,7 @@ const StructuredHome = (() => {
       const e=S.events.find(e=>e.id===it.ref);
       return {...it,scope:e?.scope||(e?.kind==='meeting'?'work':'personal')};
     }).filter(inScope);
-    const untimed=App.on('calendar')||App.on('work')?S.events.filter(e=>(e.allDay||!e.time)&&!['birthday','anniversary'].includes(e.kind)&&Calendar.occursOn(e,iso)).map(e=>{
-      const [label,ic,col]=Calendar.KINDS[e.kind]||Calendar.KINDS.event;
-      return {key:'sev:'+e.id,mod:'calendar',ref:e.id,title:e.title,event:true,scope:e.scope||(e.kind==='meeting'?'work':'personal'),tIcon:ic,color:col,src:label,open:{a:'calendar.edit',data:{id:e.id}}};
-    }).filter(inScope):[];
+    const untimed=Timeline.allDay(iso,null).filter(inScope);
     return timed.concat(untimed);
   }
   function row(it,iso,block){
@@ -7526,7 +7587,7 @@ const StructuredHome = (() => {
     if(it.done==='skip')meta.push('<span class="pill">رد شده</span>');
     const tag=it.open?'button':'div';
     return `<div class="sp-entry ${done?'done':''} ${active?'active':''}" style="--c:${c};--block-height:${block?Math.max(84,Math.min(150,(+it.dur||30)*.8)):74}px" data-entry="${U.esc(it.key||it.ref)}">
-      <div class="sp-time">${block?`<bdi>${time(block.s)}</bdi>${it.dur?`<small><bdi>${time(block.e)}</bdi></small>`:''}`:''}</div>
+      <div class="sp-time">${block?`<bdi>${time(block.s)}</bdi>${it.dur?`<small><bdi>${knEnd(block.e)}</bdi></small>`:''}`:''}</div>
       <span class="sp-node" aria-hidden="true">${icon(ic,16)}</span>
       <article class="sp-card ${it.event?'event':''}"><${tag} class="sp-open" ${attrs} ${it.open?'type="button"':''}><b>${title}</b><span class="sp-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</span></${tag}>
       ${it.focus&&!done?`<button type="button" class="icon-btn focus-go" data-a="focus.start" data-id="${U.esc(it.ref)}" aria-label="شروع تمرکز: ${title}">${icon('timer',17)}</button>`:''}
@@ -7579,7 +7640,7 @@ const StructuredHome = (() => {
       ${hol.length?`<p class="sp-holiday">${hol.map(h=>U.esc(h.title)).join(' · ')}</p>`:''}
       ${view==='timeline'?timeline(iso,items):items.length?`<div class="sp-untimed">${Agenda.sort(items).map(i=>row(i,iso,i.time?{s:U.hmToMin(i.time),e:U.hmToMin(i.time)+(+i.dur||30)}:null)).join('')}</div>`:timeline(iso,[])}
       <button type="button" class="btn primary block" data-a="structured.new">${icon('plus',19)} ${scope==='work'?'برنامهٔ کاری جدید':'کار جدید برای این روز'}</button>
-      <div class="sp-tools"><button type="button" class="btn ghost" data-a="routine.apply" data-d="${iso}">${icon('repeat',16)} افزودن روال</button><button type="button" class="btn ghost" data-a="dayplan.open" data-d="${iso}">${icon('sparkle',16)} چیدن روز</button><button type="button" class="btn ghost" data-a="structured.print">${icon('printer',16)} چاپ روز</button></div></div>
+      <div class="sp-tools"><button type="button" class="btn ghost" data-a="routine.apply" data-d="${iso}">${icon('repeat',16)} افزودن روال</button><button type="button" class="btn ghost" data-a="dayplan.open" data-d="${iso}">${icon('sparkle',16)} چیدن روز</button><button type="button" class="btn ghost" data-a="structured.print">${icon('printer',16)} چاپ</button></div></div>
       <aside class="sp-secondary" aria-label="ابزارهای روز"><section class="sp-side-card"><div class="sp-side-head"><span class="li-ic">${icon('inbox',18)}</span><b class="grow">صندوق</b><span class="pill">${U.fa(inbox.length)}</span></div><p>فکرهایی که هنوز زمانشان نرسیده، اینجا منتظرت می‌مانند.</p>
       ${inbox.slice(0,3).map(t=>`<div class="sp-inbox-row"><b>${U.esc(t.title)}</b><button type="button" class="icon-btn" data-a="inbox.pick" data-id="${U.esc(t.id)}" aria-label="زمان‌بندی ${U.esc(t.title)}">${icon('calendar',17)}</button></div>`).join('')}
       <button type="button" class="btn ghost" data-a="inbox.open">${inbox.length?'دیدن صندوق':'ثبت یک فکر تازه'} ${icon('chevL',15)}</button></section>
@@ -7597,7 +7658,7 @@ const StructuredHome = (() => {
   App.act('structured.scope',d=>{if(['all','personal','work'].includes(d.v)){scope=d.v;App.refresh();}});
   App.act('structured.view',d=>{S.settings.structuredView=d.v==='list'?'list':'timeline';DB.save('settings');App.refresh();});
   App.act('structured.new',d=>Tasks.edit(null,{date:date(),scope:scope==='work'?'work':'personal',time:d.time||''}));
-  App.act('structured.print',()=>Print.out('khodnegar-day-'+date(),Print.doc('برنامهٔ '+J.fmt(date(),'short'),Print.dayHtml(date()))));
+  App.act('structured.print',()=>Print.open(date()));
   // Update the current-time marker only when the day view is visible and no form is open.
   setInterval(()=>{if(window.S?.settings?.onboarded&&Appearance.layout().id==='structured'&&App.cur().s==='home'&&date()===J.today()&&!document.hidden&&!document.querySelector('.onb,.lockscr,.sheet-wrap'))App.refresh();},60000);
   return {screen};
